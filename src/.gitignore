@@ -1,0 +1,11 @@
+node_modules/
+dist/
+uploads/
+*.db
+*.sqlite
+.env
+
+# Frontend
+frontend/dist/
+frontend/.vite/
+frontend/node_modules/

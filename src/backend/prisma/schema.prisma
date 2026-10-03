@@ -1,0 +1,19 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Person {
+  id        Int      @id @default(autoincrement())
+  name      String
+  birthDate String?
+  parentId  Int?
+  parent    Person?  @relation("ParentChild", fields: [parentId], references: [id])
+  children  Person[] @relation("ParentChild")
+  photoUrl  String?
+  createdAt DateTime @default(now())
+}
