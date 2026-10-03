@@ -3,20 +3,31 @@ interface Person {
   id: number;
   name: string;
   birthDate: string | null;
+  photoUrl: string | null;
 }
 
-defineProps<{
-  data: Person;
-}>();
+defineProps<{ data: Person }>();
+const emit = defineEmits<{ (e: 'delete', id: number): void }>();
 
-const emit = defineEmits<{
-  (e: 'delete', id: number): void;
-}>();
+const API = 'http://localhost:3000';
+
+function getPhotoUrl(url: string | null): string | null {
+  if (!url) return null;
+  return `${API}${url}`;
+}
+
+function getInitial(name: string): string {
+  return name.charAt(0).toUpperCase();
+}
 </script>
 
 <template>
   <div class="person-card">
     <button class="delete-btn" @click="emit('delete', data.id)">✕</button>
+    <div class="avatar">
+      <img v-if="data.photoUrl" :src="getPhotoUrl(data.photoUrl)!" :alt="data.name" />
+      <span v-else class="initial">{{ getInitial(data.name) }}</span>
+    </div>
     <div class="name">{{ data.name }}</div>
     <div v-if="data.birthDate" class="date">{{ data.birthDate }}</div>
   </div>
@@ -30,20 +41,26 @@ const emit = defineEmits<{
   border: 2px solid #4a90e2;
   border-radius: 8px;
   font-family: system-ui, sans-serif;
-  min-width: 120px;
+  min-width: 140px;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   color: #000;
 }
-.name {
-  font-weight: 600;
-  font-size: 14px;
+.avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  margin: 0 auto 6px;
+  overflow: hidden;
+  background: #4a90e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.date {
-  font-size: 12px;
-  color: #666;
-  margin-top: 2px;
-}
+.avatar img { width: 100%; height: 100%; object-fit: cover; }
+.initial { color: white; font-size: 24px; font-weight: 600; }
+.name { font-weight: 600; font-size: 14px; }
+.date { font-size: 12px; color: #666; margin-top: 2px; }
 .delete-btn {
   position: absolute;
   top: 4px;
@@ -59,7 +76,5 @@ const emit = defineEmits<{
   padding: 0;
   line-height: 1;
 }
-.delete-btn:hover {
-  background: #fee;
-}
+.delete-btn:hover { background: #fee; }
 </style>

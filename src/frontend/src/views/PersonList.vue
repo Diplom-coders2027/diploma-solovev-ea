@@ -1,3 +1,4 @@
+
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
@@ -12,10 +13,12 @@ interface Person {
   name: string;
   birthDate: string | null;
   parentId: number | null;
+  photoUrl: string | null;
   children: Person[];
 }
 
 const API = 'http://localhost:3000';
+
 const treeData = ref<Person[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -24,6 +27,7 @@ const newName = ref('');
 const newBirthDate = ref('');
 const newParentId = ref<number | null>(null);
 const flatPersons = ref<Person[]>([]);
+const selectedFile = ref<File | null>(null);
 
 // Преобразуем иерархию в формат Vue Flow
 const elements = computed(() => {
@@ -34,8 +38,8 @@ const elements = computed(() => {
     persons: Person[],
     x = 0,
     y = 0,
-    gapX = 200,
-    gapY = 100
+    gapX = 220,
+    gapY = 140
   ) => {
     persons.forEach((p, i) => {
       nodes.push({
@@ -79,17 +83,40 @@ async function loadTree() {
   }
 }
 
+function onFileSelect(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (input.files && input.files[0]) {
+    selectedFile.value = input.files[0];
+  }
+}
+
+async function uploadPhoto(personId: number) {
+  if (!selectedFile.value) return;
+  const formData = new FormData();
+  formData.append('photo', selectedFile.value);
+  await axios.post(`${API}/persons/${personId}/photo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+}
+
 async function addPerson() {
   if (!newName.value.trim()) return;
   try {
-    await axios.post(`${API}/persons`, {
+    const res = await axios.post<Person>(`${API}/persons`, {
       name: newName.value.trim(),
       birthDate: newBirthDate.value || null,
       parentId: newParentId.value ?? null,
     });
+
+    if (selectedFile.value) {
+      await uploadPhoto(res.data.id);
+    }
+
     newName.value = '';
     newBirthDate.value = '';
     newParentId.value = null;
+    selectedFile.value = null;
+
     await loadTree();
   } catch (e) {
     error.value = 'Не удалось добавить';
@@ -124,6 +151,7 @@ onMounted(loadTree);
           {{ p.name }}
         </option>
       </select>
+      <input type="file" accept="image/*" @change="onFileSelect" />
       <button type="submit">Добавить</button>
     </form>
 
@@ -141,7 +169,7 @@ onMounted(loadTree);
 
 <style scoped>
 .person-list {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 40px auto;
   padding: 20px;
   font-family: system-ui, sans-serif;
@@ -154,6 +182,7 @@ h1 {
   gap: 8px;
   margin-bottom: 24px;
   flex-wrap: wrap;
+  align-items: center;
 }
 .add-form input,
 .add-form select {
@@ -163,8 +192,7 @@ h1 {
   border-radius: 4px;
 }
 .add-form input[type="text"] {
-  flex: 1;
-  min-width: 120px;
+  min-width: 140px;
 }
 .add-form button {
   padding: 8px 16px;
@@ -174,6 +202,8 @@ h1 {
 .flow-container {
   width: 100%;
   height: 600px;
+  border: 1px solid #eee;
+  border-radius: 8px;
 }
 .error {
   color: red;

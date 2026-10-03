@@ -32,13 +32,35 @@ router.get('/', async (req: Request, res: Response) => {
   res.json(persons);
 });
 
-// дерево
+// GET /persons/tree — дерево
 router.get('/tree', async (req: Request, res: Response) => {
   const persons = await prisma.person.findMany({
     orderBy: { id: 'asc' },
   });
 
-// Фото
+  type TreeNode = typeof persons[number] & { children: TreeNode[] };
+  const map = new Map<number, TreeNode>();
+  const roots: TreeNode[] = [];
+
+  // Создание узлов
+  persons.forEach((p) => {
+    map.set(p.id, { ...p, children: [] });
+  });
+
+  // Связывание
+  persons.forEach((p) => {
+    const node = map.get(p.id)!;
+    if (p.parentId && map.has(p.parentId)) {
+      map.get(p.parentId)!.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  });
+
+  res.json(roots);
+});
+
+// POST /persons/:id/photo — загрузить фото
 router.post('/:id/photo', upload.single('photo'), async (req: Request, res: Response) => {
   const id = Number(req.params.id);
 
@@ -58,29 +80,6 @@ router.post('/:id/photo', upload.single('photo'), async (req: Request, res: Resp
     console.error(error);
     res.status(500).json({ error: 'Не удалось сохранить фото' });
   }
-});
-
-  // Строим дерево: находим корни (без parentId) и вкладываем детей
-  type TreeNode = typeof persons[number] & { children: TreeNode[] };
-  const map = new Map<number, TreeNode>();
-  const roots: TreeNode[] = [];
-
-  // Сначала создаём узлы
-  persons.forEach((p) => {
-    map.set(p.id, { ...p, children: [] });
-  });
-
-  // Потом связываем
-  persons.forEach((p) => {
-    const node = map.get(p.id)!;
-    if (p.parentId && map.has(p.parentId)) {
-      map.get(p.parentId)!.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
-
-  res.json(roots);
 });
 
 // POST /persons — добавить
