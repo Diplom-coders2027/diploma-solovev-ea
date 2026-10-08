@@ -1,8 +1,8 @@
-
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
-import { VueFlow } from '@vue-flow/core';
+import { VueFlow, MarkerType } from '@vue-flow/core';
+import dagre from '@dagrejs/dagre';
 import PersonCard from '../components/PersonCard.vue';
 
 import '@vue-flow/core/dist/style.css';
@@ -13,6 +13,7 @@ interface Person {
   name: string;
   birthDate: string | null;
   parentId: number | null;
+  parent2Id: number | null;
   photoUrl: string | null;
   children: Person[];
 }
@@ -26,44 +27,98 @@ const error = ref<string | null>(null);
 const newName = ref('');
 const newBirthDate = ref('');
 const newParentId = ref<number | null>(null);
+const newParent2Id = ref<number | null>(null);
 const flatPersons = ref<Person[]>([]);
 const selectedFile = ref<File | null>(null);
 
-// Преобразуем иерархию в формат Vue Flow
+// Красивое дерево через dagre
 const elements = computed(() => {
   const nodes: any[] = [];
   const edges: any[] = [];
+  const seenIds = new Set<string>();
 
-  const traverse = (
-    persons: Person[],
-    x = 0,
-    y = 0,
-    gapX = 220,
-    gapY = 140
-  ) => {
-    persons.forEach((p, i) => {
-      nodes.push({
-        id: String(p.id),
-        position: { x: x + i * gapX, y },
-        data: p,
-        type: 'custom',
-      });
+  // 1. Собираем все узлы и рёбра
+  const traverse = (persons: Person[]) => {
+    persons.forEach((p) => {
+      const nodeId = String(p.id);
 
-      if (p.children && p.children.length > 0) {
-        p.children.forEach((child) => {
-          edges.push({
-            id: `e${p.id}-${child.id}`,
-            source: String(p.id),
-            target: String(child.id),
-          });
+      if (!seenIds.has(nodeId)) {
+        seenIds.add(nodeId);
+        nodes.push({
+          id: nodeId,
+          position: { x: 0, y: 0 },
+          data: p,
+          type: 'custom',
         });
-        traverse(p.children, x, y + gapY, gapX / 1.5);
+      }
+
+      // Ребро от первого родителя
+      if (p.parentId) {
+        edges.push({
+          id: `e${p.parentId}-${p.id}`,
+          source: String(p.parentId),
+          target: nodeId,
+          type: 'smoothstep',
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 20,
+            height: 20,
+            color: '#4a90e2',
+          },
+          style: { stroke: '#4a90e2', strokeWidth: 2 },
+        });
+      }
+
+      // Ребро от второго родителя
+      if (p.parent2Id) {
+        edges.push({
+          id: `e${p.parent2Id}-${p.id}`,
+          source: String(p.parent2Id),
+          target: nodeId,
+          type: 'smoothstep',
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 20,
+            height: 20,
+            color: '#4a90e2',
+          },
+          style: { stroke: '#4a90e2', strokeWidth: 2 },
+        });
+      }
+
+      if (p.children) {
+        traverse(p.children);
       }
     });
   };
 
   traverse(treeData.value);
-  return { nodes, edges };
+
+  // 2. Раскладываем через dagre
+  const g = new dagre.graphlib.Graph();
+  g.setGraph({ rankdir: 'TB', nodesep: 80, ranksep: 120 });
+  g.setDefaultEdgeLabel(() => ({}));
+
+  nodes.forEach((node) => {
+    g.setNode(node.id, { width: 160, height: 100 });
+  });
+
+  edges.forEach((edge) => {
+    g.setEdge(edge.source, edge.target);
+  });
+
+  dagre.layout(g);
+
+  // 3. Применяем позиции
+  const layoutedNodes = nodes.map((node) => {
+    const pos = g.node(node.id);
+    return {
+      ...node,
+      position: { x: pos.x - 80, y: pos.y - 50 },
+    };
+  });
+
+  return { nodes: layoutedNodes, edges };
 });
 
 async function loadTree() {
@@ -106,6 +161,7 @@ async function addPerson() {
       name: newName.value.trim(),
       birthDate: newBirthDate.value || null,
       parentId: newParentId.value ?? null,
+      parent2Id: newParent2Id.value ?? null,
     });
 
     if (selectedFile.value) {
@@ -115,6 +171,7 @@ async function addPerson() {
     newName.value = '';
     newBirthDate.value = '';
     newParentId.value = null;
+    newParent2Id.value = null;
     selectedFile.value = null;
 
     await loadTree();
@@ -146,7 +203,13 @@ onMounted(loadTree);
       <input v-model="newName" type="text" placeholder="Имя" required />
       <input v-model="newBirthDate" type="date" />
       <select v-model="newParentId">
-        <option :value="null">— Без родителя —</option>
+        <option :value="null">— Родитель 1 —</option>
+        <option v-for="p in flatPersons" :key="p.id" :value="p.id">
+          {{ p.name }}
+        </option>
+      </select>
+      <select v-model="newParent2Id">
+        <option :value="null">— Родитель 2 —</option>
         <option v-for="p in flatPersons" :key="p.id" :value="p.id">
           {{ p.name }}
         </option>
@@ -169,7 +232,7 @@ onMounted(loadTree);
 
 <style scoped>
 .person-list {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 40px auto;
   padding: 20px;
   font-family: system-ui, sans-serif;
@@ -201,9 +264,10 @@ h1 {
 }
 .flow-container {
   width: 100%;
-  height: 600px;
+  height: 700px;
   border: 1px solid #eee;
   border-radius: 8px;
+  background: #fafbfc;
 }
 .error {
   color: red;

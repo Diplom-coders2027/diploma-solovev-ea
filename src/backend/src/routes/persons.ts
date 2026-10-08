@@ -42,17 +42,26 @@ router.get('/tree', async (req: Request, res: Response) => {
   const map = new Map<number, TreeNode>();
   const roots: TreeNode[] = [];
 
-  // Создание узлов
+  // Создаём узлы
   persons.forEach((p) => {
     map.set(p.id, { ...p, children: [] });
   });
 
-  // Связывание
+  // Связываем — с учётом обоих родителей
   persons.forEach((p) => {
     const node = map.get(p.id)!;
+    let hasParent = false;
+
     if (p.parentId && map.has(p.parentId)) {
       map.get(p.parentId)!.children.push(node);
-    } else {
+      hasParent = true;
+    }
+    if (p.parent2Id && map.has(p.parent2Id)) {
+      map.get(p.parent2Id)!.children.push(node);
+      hasParent = true;
+    }
+
+    if (!hasParent) {
       roots.push(node);
     }
   });
@@ -84,13 +93,14 @@ router.post('/:id/photo', upload.single('photo'), async (req: Request, res: Resp
 
 // POST /persons — добавить
 router.post('/', async (req: Request, res: Response) => {
-  const { name, birthDate, parentId } = req.body as {
+  const { name, birthDate, parentId, parent2Id } = req.body as {
     name: string;
     birthDate?: string;
     parentId?: number;
+    parent2Id?: number;
   };
   const newPerson = await prisma.person.create({
-    data: { name, birthDate, parentId },
+    data: { name, birthDate, parentId, parent2Id },
   });
   res.status(201).json(newPerson);
 });
