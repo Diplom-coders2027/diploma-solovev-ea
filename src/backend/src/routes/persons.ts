@@ -3,8 +3,9 @@ import { prisma } from '../db';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { parseGedcomFile } from '../gedcom';
 
-// Папка для загрузок
+// Папка для загрузок фото
 const uploadDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -39,6 +40,9 @@ const audioStorage = multer.diskStorage({
 });
 
 const uploadAudio = multer({ storage: audioStorage });
+
+// Настройка для GEDCOM (в память)
+const uploadGedcom = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
 
@@ -83,6 +87,68 @@ router.get('/tree', async (req: Request, res: Response) => {
   });
 
   res.json(roots);
+});
+
+// POST /persons/import/gedcom — импорт GEDCOM
+router.post('/import/gedcom', uploadGedcom.single('gedcom'), async (req: Request, res: Response) => {
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'Файл не загружен' });
+  }
+
+  try {
+    const { persons } = parseGedcomFile(req.file.buffer);
+
+
+    if (persons.length === 0) {
+      return res.status(400).json({ error: 'Файл пуст или не содержит людей' });
+    }
+
+    const xrefToId = new Map<string, number>();
+
+    // Сначала создаём всех людей БЕЗ родителей
+    for (const p of persons) {
+      const created = await prisma.person.create({
+        data: {
+          name: p.name,
+          birthDate: p.birthDate,
+        },
+      });
+      xrefToId.set(p.xref, created.id);
+    }
+
+
+    // Затем связываем с родителями
+    for (const p of persons) {
+      const childId = xrefToId.get(p.xref);
+      if (!childId) continue;
+
+      const parentId = p.parentXrefs[0] ? xrefToId.get(p.parentXrefs[0]) : null;
+      const parent2Id = p.parentXrefs[1] ? xrefToId.get(p.parentXrefs[1]) : null;
+
+      if (parentId || parent2Id) {
+        await prisma.person.update({
+          where: { id: childId },
+          data: {
+            parentId: parentId ?? null,
+            parent2Id: parent2Id ?? null,
+          },
+        });
+      }
+    }
+
+
+    res.json({
+      success: true,
+      imported: persons.length,
+    });
+  } catch (error) {
+    console.error('❌ GEDCOM import error:', error);
+    res.status(500).json({
+      error: 'Не удалось распарсить GEDCOM',
+      details: error instanceof Error ? error.message : String(error),
+    });
+  }
 });
 
 // POST /persons/:id/photo — загрузить фото
@@ -148,17 +214,6 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /persons/:id — удалить
-router.delete('/:id', async (req: Request, res: Response) => {
-  const id = Number(req.params.id);
-  try {
-    await prisma.person.delete({ where: { id } });
-    res.status(204).send();
-  } catch (error) {
-    res.status(404).json({ error: 'Person not found' });
-  }
-});
-
 // POST /persons/:id/audio — загрузить аудио
 router.post('/:id/audio', uploadAudio.single('audio'), async (req: Request, res: Response) => {
   const personId = Number(req.params.id);
@@ -209,6 +264,17 @@ router.delete('/:id/audios/:audioId', async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Не удалось удалить аудио' });
+  }
+});
+
+// DELETE /persons/:id — удалить
+router.delete('/:id', async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  try {
+    await prisma.person.delete({ where: { id } });
+    res.status(204).send();
+  } catch (error) {
+    res.status(404).json({ error: 'Person not found' });
   }
 });
 

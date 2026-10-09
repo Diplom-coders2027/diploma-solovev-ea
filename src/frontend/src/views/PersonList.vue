@@ -8,6 +8,7 @@ import EditPersonModal from '../components/EditPersonModal.vue';
 import AudioLibrary from '../components/AudioLibrary.vue';
 import { RouterLink } from 'vue-router';
 import SettingsMenu from '../components/SettingsMenu.vue';
+import ConfirmDialog from '../components/ConfirmDialog.vue';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -38,6 +39,26 @@ const selectedFile = ref<File | null>(null);
 const editingPerson = ref<Person | null>(null);
 
 const activeTab = ref<'tree' | 'audio'>('tree');
+
+const confirmDialog = ref<{
+  show: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+}>({
+  show: false,
+  title: '',
+  message: '',
+  onConfirm: () => {},
+});
+
+function askConfirm(title: string, message: string, onConfirm: () => void) {
+  confirmDialog.value = { show: true, title, message, onConfirm };
+}
+
+function closeConfirm() {
+  confirmDialog.value.show = false;
+}
 
 const elements = computed(() => {
   const nodes: any[] = [];
@@ -214,14 +235,23 @@ async function savePerson(data: {
 }
 
 async function deletePerson(id: number) {
-  if (!confirm('Удалить этого человека?')) return;
-  try {
-    await axios.delete(`${API}/persons/${id}`);
-    await loadTree();
-  } catch (e) {
-    alert('Не удалось удалить. Возможно, у человека есть дети.');
-    console.error(e);
-  }
+  const person = flatPersons.value.find((p) => p.id === id);
+  const name = person?.name || 'этого человека';
+
+  askConfirm(
+    'Удалить?',
+    `Вы уверены, что хотите удалить «${name}»? Это действие нельзя отменить.`,
+    async () => {
+      closeConfirm();
+      try {
+        await axios.delete(`${API}/persons/${id}`);
+        await loadTree();
+      } catch (e) {
+        alert('Не удалось удалить. Возможно, у человека есть дети.');
+        console.error(e);
+      }
+    }
+  );
 }
 
 onMounted(loadTree);
@@ -301,6 +331,16 @@ onMounted(loadTree);
       @save="savePerson"
       @photo="savePhotoFromModal"
       @close="editingPerson = null"
+    />
+    <ConfirmDialog
+      :show="confirmDialog.show"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      confirm-text="Удалить"
+      cancel-text="Отмена"
+      :danger="true"
+      @confirm="confirmDialog.onConfirm()"
+      @cancel="closeConfirm"
     />
   </div>
 </template>

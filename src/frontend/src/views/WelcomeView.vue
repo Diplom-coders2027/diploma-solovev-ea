@@ -1,11 +1,45 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
+import axios from 'axios';
 import SettingsMenu from '../components/SettingsMenu.vue';
 
 const router = useRouter();
+const API = 'http://localhost:3000';
+
+const importing = ref(false);
+const importMessage = ref<string | null>(null);
+const importError = ref<string | null>(null);
 
 function goToApp() {
   router.push('/app');
+}
+
+async function onGedcomSelect(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (!input.files || !input.files[0]) return;
+
+  const file = input.files[0];
+  const formData = new FormData();
+  formData.append('gedcom', file);
+
+  importing.value = true;
+  importMessage.value = null;
+  importError.value = null;
+
+  try {
+    const res = await axios.post(`${API}/persons/import/gedcom`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    importMessage.value = `Импортировано: ${res.data.imported} человек`;
+    setTimeout(() => router.push('/app'), 1500);
+  } catch (e) {
+    importError.value = 'Не удалось импортировать файл';
+    console.error(e);
+  } finally {
+    importing.value = false;
+    input.value = '';
+  }
 }
 </script>
 
@@ -22,9 +56,29 @@ function goToApp() {
         Сохраните историю своей семьи: дерево, фотографии и голоса близких — в одном месте.
       </p>
 
-      <button class="enter-btn" @click="goToApp">
-        Войти в архив →
-      </button>
+      <div class="buttons">
+        <button class="enter-btn" @click="goToApp">
+          Войти в архив →
+        </button>
+
+        <label class="import-btn" :class="{ disabled: importing }">
+          <input
+            type="file"
+            accept=".ged,.gedcom"
+            @change="onGedcomSelect"
+            :disabled="importing"
+          />
+          <span v-if="!importing">📥 Импортировать GEDCOM</span>
+          <span v-else>Импортирую...</span>
+        </label>
+      </div>
+
+      <p v-if="importMessage" class="import-message success">{{ importMessage }}</p>
+      <p v-if="importError" class="import-message error">{{ importError }}</p>
+
+      <p class="hint">
+        Поддерживаются файлы из MyHeritage, Ancestry, «Древа Жизни» и других генеалогических программ.
+      </p>
 
       <div class="features">
         <div class="feature">
@@ -46,22 +100,6 @@ function goToApp() {
     </div>
   </div>
 </template>
-
-<style>
-/* Не scoped — нужно применить ко всему документу */
-html,
-body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow-x: hidden;
-}
-#app {
-  width: 100%;
-  min-height: 100vh;
-}
-</style>
 
 <style scoped>
 .welcome {
@@ -110,6 +148,13 @@ h1 {
   margin-left: auto;
   margin-right: auto;
 }
+.buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
 .enter-btn {
   padding: 16px 40px;
   font-size: 17px;
@@ -128,6 +173,54 @@ h1 {
 }
 .enter-btn:active {
   transform: translateY(0);
+}
+.import-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+}
+.import-btn input[type="file"] {
+  position: absolute;
+  left: -9999px;
+}
+.import-btn span {
+  display: inline-block;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--bg-secondary);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.import-btn span:hover {
+  background: var(--accent-light);
+}
+.import-btn.disabled span {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.import-message {
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+.import-message.success {
+  color: #2e7d32;
+  background: #e8f5e9;
+}
+.import-message.error {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+.hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 40px;
 }
 .features {
   display: grid;
@@ -170,4 +263,5 @@ h1 {
   h1 { font-size: 36px; }
   .subtitle { font-size: 16px; }
   .features { grid-template-columns: 1fr; }
-}</style>
+}
+</style>

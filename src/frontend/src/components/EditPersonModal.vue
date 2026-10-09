@@ -77,53 +77,55 @@ function onSave() {
 </script>
 
 <template>
-  <div v-if="person" class="modal-overlay" @click.self="emit('close')">
-    <div class="modal">
-      <h2>Редактировать</h2>
+  <Transition name="modal-fade">
+    <div v-if="person" class="modal-overlay" @click.self="emit('close')">
+      <div class="modal">
+        <h2>Редактировать</h2>
 
-      <form @submit.prevent="onSave">
-        <label>
-          Имя
-          <input v-model="name" type="text" required />
-        </label>
+        <form @submit.prevent="onSave">
+          <label>
+            Имя
+            <input v-model="name" type="text" required />
+          </label>
 
-        <label>
-          Дата рождения
-          <input v-model="birthDate" type="date" />
-        </label>
+          <label>
+            Дата рождения
+            <input v-model="birthDate" type="date" />
+          </label>
 
-        <label>
-          Родитель 1
-          <select v-model="parentId">
-            <option :value="null">— Нет —</option>
-            <option v-for="p in availableParents()" :key="p.id" :value="p.id">
-              {{ p.name }}
-            </option>
-          </select>
-        </label>
+          <label>
+            Родитель 1
+            <select v-model="parentId">
+              <option :value="null">— Нет —</option>
+              <option v-for="p in availableParents()" :key="p.id" :value="p.id">
+                {{ p.name }}
+              </option>
+            </select>
+          </label>
 
-        <label>
-          Родитель 2
-          <select v-model="parent2Id">
-            <option :value="null">— Нет —</option>
-            <option v-for="p in availableParents()" :key="p.id" :value="p.id">
-              {{ p.name }}
-            </option>
-          </select>
-        </label>
+          <label>
+            Родитель 2
+            <select v-model="parent2Id">
+              <option :value="null">— Нет —</option>
+              <option v-for="p in availableParents()" :key="p.id" :value="p.id">
+                {{ p.name }}
+              </option>
+            </select>
+          </label>
 
-        <label>
-          Фото
-          <input type="file" accept="image/*" @change="onPhotoSelect" />
-        </label>
+          <label>
+            Фото
+            <input type="file" accept="image/*" @change="onPhotoSelect" />
+          </label>
 
-        <div class="buttons">
-          <button type="button" @click="emit('close')">Отмена</button>
-          <button type="submit" class="primary">Сохранить</button>
-        </div>
-      </form>
+          <div class="buttons">
+            <button type="button" @click="emit('close')">Отмена</button>
+            <button type="submit" class="primary">Сохранить</button>
+          </div>
+        </form>
+      </div>
     </div>
-  </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -131,10 +133,13 @@ function onSave() {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2000;
+  padding: 20px;
 }
 .modal {
   background: var(--bg-elevated);
@@ -142,6 +147,7 @@ function onSave() {
   border-radius: 12px;
   min-width: 400px;
   max-width: 500px;
+  width: 100%;
   box-shadow: var(--shadow-lg);
   font-family: system-ui, sans-serif;
   animation: modalIn 0.2s ease-out;
@@ -215,5 +221,14 @@ button.primary {
 button.primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
 }
 </style>

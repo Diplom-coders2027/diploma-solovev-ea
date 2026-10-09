@@ -15,7 +15,9 @@
     "@prisma/client": "^6.19.3",
     "cors": "^2.8.5",
     "express": "^4.21.1",
-    "multer": "^2.4.0"
+    "lignee": "^0.2.0",
+    "multer": "^2.4.0",
+    "parse-gedcom": "^2.0.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
