@@ -232,7 +232,7 @@ onUnmounted(() => {
             @click="startRecording(person.id)"
             :disabled="recordingPersonId !== null"
           >
-            🎤 Записать
+            Записать
           </button>
 
           <button
@@ -250,7 +250,7 @@ onUnmounted(() => {
               @change="(e) => uploadAudio(person.id, e)"
               :disabled="recordingPersonId !== null"
             />
-            <span>📁 Загрузить</span>
+            <span>Загрузить</span>
           </label>
         </div>
       </div>

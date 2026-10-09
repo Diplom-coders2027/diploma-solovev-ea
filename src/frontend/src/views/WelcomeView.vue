@@ -62,7 +62,7 @@ async function onGedcomSelect(event: Event) {
 
       <div class="buttons">
         <button class="export-btn" @click="exportGedcom">
-          💾 Экспорт GEDCOM
+          Экспорт GEDCOM
         </button>
         <button class="enter-btn" @click="goToApp">
           Войти в архив →
@@ -75,7 +75,7 @@ async function onGedcomSelect(event: Event) {
             @change="onGedcomSelect"
             :disabled="importing"
           />
-          <span v-if="!importing">📥 Импортировать GEDCOM</span>
+          <span v-if="!importing">Импортировать GEDCOM</span>
           <span v-else>Импортирую...</span>
         </label>
       </div>
