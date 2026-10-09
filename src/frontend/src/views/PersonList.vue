@@ -151,6 +151,14 @@ async function uploadPhoto(personId: number) {
   });
 }
 
+async function savePhotoFromModal(data: { id: number; file: File }) {
+  const formData = new FormData();
+  formData.append('photo', data.file);
+  await axios.post(`${API}/persons/${data.id}/photo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+}
+
 async function addPerson() {
   if (!newName.value.trim()) return;
   try {
@@ -219,22 +227,31 @@ onMounted(loadTree);
     <h1>Семейный архив</h1>
 
     <form class="add-form" @submit.prevent="addPerson">
-      <input v-model="newName" type="text" placeholder="Имя" required />
-      <input v-model="newBirthDate" type="date" />
-      <select v-model="newParentId">
-        <option :value="null">— Родитель 1 —</option>
-        <option v-for="p in flatPersons" :key="p.id" :value="p.id">
-          {{ p.name }}
-        </option>
-      </select>
-      <select v-model="newParent2Id">
-        <option :value="null">— Родитель 2 —</option>
-        <option v-for="p in flatPersons" :key="p.id" :value="p.id">
-          {{ p.name }}
-        </option>
-      </select>
-      <input type="file" accept="image/*" @change="onFileSelect" />
-      <button type="submit">Добавить</button>
+      <div class="form-row">
+        <input v-model="newName" type="text" placeholder="Имя" required />
+        <input v-model="newBirthDate" type="date" />
+        <select v-model="newParentId">
+          <option :value="null">— Родитель 1 —</option>
+          <option v-for="p in flatPersons" :key="p.id" :value="p.id">
+            {{ p.name }}
+          </option>
+        </select>
+        <select v-model="newParent2Id">
+          <option :value="null">— Родитель 2 —</option>
+          <option v-for="p in flatPersons" :key="p.id" :value="p.id">
+            {{ p.name }}
+          </option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label class="file-input">
+          <input type="file" accept="image/*" @change="onFileSelect" />
+          <span class="file-label">
+            {{ selectedFile ? selectedFile.name : '📷 Выбрать фото' }}
+          </span>
+        </label>
+        <button type="submit">➕ Добавить</button>
+      </div>
     </form>
 
     <p v-if="loading">Загрузка...</p>
@@ -255,6 +272,7 @@ onMounted(loadTree);
       :person="editingPerson"
       :all-persons="flatPersons"
       @save="savePerson"
+      @photo="savePhotoFromModal"
       @close="editingPerson = null"
     />
   </div>
@@ -269,37 +287,102 @@ onMounted(loadTree);
 }
 h1 {
   margin-bottom: 24px;
+  color: #1a1a1a;
+  font-size: 28px;
 }
+
 .add-form {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   margin-bottom: 24px;
+  padding: 16px;
+  background: #f8fafd;
+  border: 1px solid #e1e8f0;
+  border-radius: 12px;
+}
+.form-row {
+  display: flex;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
 }
 .add-form input,
 .add-form select {
-  padding: 8px;
+  padding: 10px 12px;
   font-size: 14px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  background: white;
+  color: #1a1a1a;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.add-form input:focus,
+.add-form select:focus {
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
 }
 .add-form input[type="text"] {
-  min-width: 140px;
+  min-width: 160px;
+  flex: 1;
+}
+.add-form select {
+  min-width: 150px;
 }
 .add-form button {
-  padding: 8px 16px;
+  padding: 10px 20px;
   font-size: 14px;
+  font-weight: 500;
+  color: white;
+  background: #4a90e2;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
+  transition: background 0.15s;
 }
+.add-form button:hover {
+  background: #3a7bc8;
+}
+
+.file-input {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+}
+.file-input input[type="file"] {
+  position: absolute;
+  left: -9999px;
+}
+.file-label {
+  display: inline-block;
+  padding: 10px 16px;
+  font-size: 14px;
+  background: white;
+  border: 1px dashed #4a90e2;
+  border-radius: 8px;
+  color: #4a90e2;
+  cursor: pointer;
+  transition: all 0.15s;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-label:hover {
+  background: #eaf2fb;
+}
+
 .flow-container {
   width: 100%;
   height: 700px;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  background: #fafbfc;
+  border: 1px solid #e1e8f0;
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 1px 1px, #e8eef5 1px, transparent 0) 0 0 / 20px 20px,
+    #fafbfc;
 }
 .error {
-  color: red;
+  color: #c00;
 }
 </style>
