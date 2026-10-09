@@ -22,6 +22,24 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// Настройка для аудио
+const audioDir = path.join(__dirname, '../../uploads/audio');
+if (!fs.existsSync(audioDir)) {
+  fs.mkdirSync(audioDir, { recursive: true });
+}
+
+const audioStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, audioDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `audio-person-${req.params.id}-${Date.now()}${ext}`);
+  },
+});
+
+const uploadAudio = multer({ storage: audioStorage });
+
 const router = Router();
 
 // GET /persons — список
@@ -138,6 +156,59 @@ router.delete('/:id', async (req: Request, res: Response) => {
     res.status(204).send();
   } catch (error) {
     res.status(404).json({ error: 'Person not found' });
+  }
+});
+
+// POST /persons/:id/audio — загрузить аудио
+router.post('/:id/audio', uploadAudio.single('audio'), async (req: Request, res: Response) => {
+  const personId = Number(req.params.id);
+  const { title } = req.body as { title?: string };
+
+  if (!req.file) {
+    return res.status(400).json({ error: 'Файл не загружен' });
+  }
+
+  const url = `/uploads/audio/${req.file.filename}`;
+
+  try {
+    const audio = await prisma.audio.create({
+      data: { personId, url, title: title || null },
+    });
+    res.status(201).json(audio);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Не удалось сохранить аудио' });
+  }
+});
+
+// GET /persons/:id/audios — список аудио
+router.get('/:id/audios', async (req: Request, res: Response) => {
+  const personId = Number(req.params.id);
+  const audios = await prisma.audio.findMany({
+    where: { personId },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json(audios);
+});
+
+// DELETE /persons/:id/audios/:audioId — удалить аудио
+router.delete('/:id/audios/:audioId', async (req: Request, res: Response) => {
+  const audioId = Number(req.params.audioId);
+
+  try {
+    const audio = await prisma.audio.findUnique({ where: { id: audioId } });
+    if (!audio) return res.status(404).json({ error: 'Audio not found' });
+
+    const filePath = path.join(__dirname, '../../', audio.url);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+
+    await prisma.audio.delete({ where: { id: audioId } });
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Не удалось удалить аудио' });
   }
 });
 

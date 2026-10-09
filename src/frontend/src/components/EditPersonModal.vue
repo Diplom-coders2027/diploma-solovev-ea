@@ -24,12 +24,14 @@ const emit = defineEmits<{
     parent2Id: number | null;
   }): void;
   (e: 'close'): void;
+  (e: 'photo', data: { id: number; file: File }): void;
 }>();
 
 const name = ref('');
 const birthDate = ref('');
 const parentId = ref<number | null>(null);
 const parent2Id = ref<number | null>(null);
+const newPhoto = ref<File | null>(null);
 
 watch(
   () => props.person,
@@ -39,6 +41,7 @@ watch(
       birthDate.value = p.birthDate ?? '';
       parentId.value = p.parentId;
       parent2Id.value = p.parent2Id;
+      newPhoto.value = null;
     }
   },
   { immediate: true }
@@ -49,8 +52,20 @@ function availableParents(): Person[] {
   return props.allPersons.filter((p) => p.id !== props.person!.id);
 }
 
+function onPhotoSelect(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (input.files && input.files[0]) {
+    newPhoto.value = input.files[0];
+  }
+}
+
 function onSave() {
   if (!props.person || !name.value.trim()) return;
+
+  if (newPhoto.value) {
+    emit('photo', { id: props.person.id, file: newPhoto.value });
+  }
+
   emit('save', {
     id: props.person.id,
     name: name.value.trim(),
@@ -97,6 +112,11 @@ function onSave() {
           </select>
         </label>
 
+        <label>
+          Фото
+          <input type="file" accept="image/*" @change="onPhotoSelect" />
+        </label>
+
         <div class="buttons">
           <button type="button" @click="emit('close')">Отмена</button>
           <button type="submit" class="primary">Сохранить</button>
@@ -124,6 +144,17 @@ function onSave() {
   max-width: 500px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   font-family: system-ui, sans-serif;
+  animation: modalIn 0.2s ease-out;
+}
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 h2 {
   margin: 0 0 20px;

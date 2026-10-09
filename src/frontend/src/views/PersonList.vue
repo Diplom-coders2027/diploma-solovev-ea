@@ -5,6 +5,7 @@ import { VueFlow, MarkerType } from '@vue-flow/core';
 import dagre from '@dagrejs/dagre';
 import PersonCard from '../components/PersonCard.vue';
 import EditPersonModal from '../components/EditPersonModal.vue';
+import AudioLibrary from '../components/AudioLibrary.vue';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -33,6 +34,8 @@ const flatPersons = ref<Person[]>([]);
 const selectedFile = ref<File | null>(null);
 
 const editingPerson = ref<Person | null>(null);
+
+const activeTab = ref<'tree' | 'audio'>('tree');
 
 const elements = computed(() => {
   const nodes: any[] = [];
@@ -226,47 +229,66 @@ onMounted(loadTree);
   <div class="person-list">
     <h1>Семейный архив</h1>
 
-    <form class="add-form" @submit.prevent="addPerson">
-      <div class="form-row">
-        <input v-model="newName" type="text" placeholder="Имя" required />
-        <input v-model="newBirthDate" type="date" />
-        <select v-model="newParentId">
-          <option :value="null">— Родитель 1 —</option>
-          <option v-for="p in flatPersons" :key="p.id" :value="p.id">
-            {{ p.name }}
-          </option>
-        </select>
-        <select v-model="newParent2Id">
-          <option :value="null">— Родитель 2 —</option>
-          <option v-for="p in flatPersons" :key="p.id" :value="p.id">
-            {{ p.name }}
-          </option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label class="file-input">
-          <input type="file" accept="image/*" @change="onFileSelect" />
-          <span class="file-label">
-            {{ selectedFile ? selectedFile.name : '📷 Выбрать фото' }}
-          </span>
-        </label>
-        <button type="submit">➕ Добавить</button>
-      </div>
-    </form>
-
-    <p v-if="loading">Загрузка...</p>
-    <p v-else-if="error" class="error">{{ error }}</p>
-    <div v-else class="flow-container">
-      <VueFlow :nodes="elements.nodes" :edges="elements.edges">
-        <template #node-custom="nodeProps">
-          <PersonCard
-            v-bind="nodeProps"
-            @delete="deletePerson"
-            @edit="editingPerson = nodeProps.data"
-          />
-        </template>
-      </VueFlow>
+    <div class="tabs">
+      <button
+        :class="['tab', { active: activeTab === 'tree' }]"
+        @click="activeTab = 'tree'"
+      >
+        🌳 Дерево
+      </button>
+      <button
+        :class="['tab', { active: activeTab === 'audio' }]"
+        @click="activeTab = 'audio'"
+      >
+        🎵 Аудио
+      </button>
     </div>
+
+    <template v-if="activeTab === 'tree'">
+      <form class="add-form" @submit.prevent="addPerson">
+        <div class="form-row">
+          <input v-model="newName" type="text" placeholder="Имя" required />
+          <input v-model="newBirthDate" type="date" />
+          <select v-model="newParentId">
+            <option :value="null">— Родитель 1 —</option>
+            <option v-for="p in flatPersons" :key="p.id" :value="p.id">
+              {{ p.name }}
+            </option>
+          </select>
+          <select v-model="newParent2Id">
+            <option :value="null">— Родитель 2 —</option>
+            <option v-for="p in flatPersons" :key="p.id" :value="p.id">
+              {{ p.name }}
+            </option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label class="file-input">
+            <input type="file" accept="image/*" @change="onFileSelect" />
+            <span class="file-label">
+              {{ selectedFile ? selectedFile.name : '📷 Выбрать фото' }}
+            </span>
+          </label>
+          <button type="submit">➕ Добавить</button>
+        </div>
+      </form>
+
+      <p v-if="loading">Загрузка...</p>
+      <p v-else-if="error" class="error">{{ error }}</p>
+      <div v-else class="flow-container">
+        <VueFlow :nodes="elements.nodes" :edges="elements.edges">
+          <template #node-custom="nodeProps">
+            <PersonCard
+              v-bind="nodeProps"
+              @delete="deletePerson"
+              @edit="editingPerson = nodeProps.data"
+            />
+          </template>
+        </VueFlow>
+      </div>
+    </template>
+
+    <AudioLibrary v-else />
 
     <EditPersonModal
       :person="editingPerson"
@@ -289,6 +311,35 @@ h1 {
   margin-bottom: 24px;
   color: #1a1a1a;
   font-size: 28px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  background: #f0f3f7;
+  padding: 4px;
+  border-radius: 10px;
+  width: fit-content;
+}
+.tab {
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: #5a6b7d;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab:hover {
+  color: #4a90e2;
+}
+.tab.active {
+  background: white;
+  color: #4a90e2;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .add-form {
