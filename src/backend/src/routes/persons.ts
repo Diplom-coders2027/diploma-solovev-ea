@@ -4,6 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { parseGedcomFile } from '../gedcom';
+import { generateGedcom } from '../gedcomExport';
 
 // Папка для загрузок фото
 const uploadDir = path.join(__dirname, '../../uploads');
@@ -148,6 +149,22 @@ router.post('/import/gedcom', uploadGedcom.single('gedcom'), async (req: Request
       error: 'Не удалось распарсить GEDCOM',
       details: error instanceof Error ? error.message : String(error),
     });
+  }
+});
+
+// GET /persons/export/gedcom — экспорт GEDCOM
+router.get('/export/gedcom', async (req: Request, res: Response) => {
+  try {
+    const gedcom = await generateGedcom();
+
+    const filename = `family-archive-${Date.now()}.ged`;
+
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(gedcom);
+  } catch (error) {
+    console.error('GEDCOM export error:', error);
+    res.status(500).json({ error: 'Не удалось создать GEDCOM' });
   }
 });
 

@@ -6,7 +6,11 @@ interface Person {
   photoUrl: string | null;
 }
 
-defineProps<{ data: Person }>();
+defineProps<{
+  data: Person;
+  highlighted?: boolean;
+}>();
+
 const emit = defineEmits<{
   (e: 'delete', id: number): void;
   (e: 'edit'): void;
@@ -25,7 +29,11 @@ function getInitial(name: string): string {
 </script>
 
 <template>
-  <div class="person-card" @dblclick="emit('edit')">
+  <div
+    class="person-card"
+    :class="{ highlighted }"
+    @dblclick="emit('edit')"
+  >
     <div class="card-actions">
       <button class="action-btn edit" @click.stop="emit('edit')" title="Редактировать">
         ✎
@@ -142,5 +150,20 @@ function getInitial(name: string): string {
 .date {
   font-size: 12px;
   color: var(--text-muted);
+}
+.person-card.highlighted {
+  border-color: #f5a623;
+  box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.3), 0 8px 24px rgba(245, 166, 35, 0.5);
+  animation: highlightPulse 1s ease-in-out infinite;
+  z-index: 10;
+}
+
+@keyframes highlightPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.3), 0 8px 24px rgba(245, 166, 35, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(245, 166, 35, 0.15), 0 12px 32px rgba(245, 166, 35, 0.7);
+  }
 }
 </style>

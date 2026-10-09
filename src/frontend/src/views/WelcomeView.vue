@@ -11,6 +11,10 @@ const importing = ref(false);
 const importMessage = ref<string | null>(null);
 const importError = ref<string | null>(null);
 
+function exportGedcom() {
+  window.location.href = `${API}/persons/export/gedcom`;
+}
+
 function goToApp() {
   router.push('/app');
 }
@@ -57,6 +61,9 @@ async function onGedcomSelect(event: Event) {
       </p>
 
       <div class="buttons">
+        <button class="export-btn" @click="exportGedcom">
+          💾 Экспорт GEDCOM
+        </button>
         <button class="enter-btn" @click="goToApp">
           Войти в архив →
         </button>
@@ -258,6 +265,21 @@ h1 {
   position: absolute;
   top: 20px;
   right: 20px;
+}
+.export-btn {
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.export-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
 @media (max-width: 700px) {
   h1 { font-size: 36px; }

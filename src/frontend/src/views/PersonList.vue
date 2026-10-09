@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
-import { VueFlow, MarkerType } from '@vue-flow/core';
+import { VueFlow, MarkerType, useVueFlow } from '@vue-flow/core';
 import dagre from '@dagrejs/dagre';
 import PersonCard from '../components/PersonCard.vue';
 import EditPersonModal from '../components/EditPersonModal.vue';
 import AudioLibrary from '../components/AudioLibrary.vue';
-import { RouterLink } from 'vue-router';
-import SettingsMenu from '../components/SettingsMenu.vue';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
+import SettingsMenu from '../components/SettingsMenu.vue';
+import { RouterLink } from 'vue-router';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -40,6 +40,21 @@ const editingPerson = ref<Person | null>(null);
 
 const activeTab = ref<'tree' | 'audio'>('tree');
 
+// Поиск
+const { setCenter } = useVueFlow();
+const searchQuery = ref('');
+const highlightedId = ref<number | null>(null);
+let highlightTimer: ReturnType<typeof setTimeout> | null = null;
+
+const searchResults = computed(() => {
+  if (!searchQuery.value.trim()) return [];
+  const q = searchQuery.value.toLowerCase().trim();
+  return flatPersons.value.filter((p) =>
+    p.name.toLowerCase().includes(q)
+  );
+});
+
+// Подтверждение
 const confirmDialog = ref<{
   show: boolean;
   title: string;
@@ -60,6 +75,7 @@ function closeConfirm() {
   confirmDialog.value.show = false;
 }
 
+// Дерево
 const elements = computed(() => {
   const nodes: any[] = [];
   const edges: any[] = [];
@@ -161,6 +177,35 @@ async function loadTree() {
   }
 }
 
+function focusPerson(personId: number) {
+  const node = elements.value.nodes.find((n: any) => n.id === String(personId));
+  if (node) {
+    setCenter(node.position.x + 80, node.position.y + 50, {
+      zoom: 1.2,
+      duration: 600,
+    });
+
+    highlightedId.value = personId;
+    if (highlightTimer) clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(() => {
+      highlightedId.value = null;
+    }, 3000);
+  }
+}
+
+function onSearchEnter() {
+  const first = searchResults.value[0];
+  if (first) {
+    focusPerson(first.id);
+  }
+}
+
+function clearSearch() {
+  searchQuery.value = '';
+  highlightedId.value = null;
+  if (highlightTimer) clearTimeout(highlightTimer);
+}
+
 function onFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;
   if (input.files && input.files[0]) {
@@ -254,15 +299,22 @@ async function deletePerson(id: number) {
   );
 }
 
-onMounted(loadTree);
+onMounted(() => {
+  loadTree();
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      clearSearch();
+    }
+  });
+});
 </script>
 
 <template>
   <div class="person-list">
     <div class="top-bar">
-  <RouterLink to="/" class="home-link">← На главную</RouterLink>
-  <SettingsMenu />
-</div>
+      <RouterLink to="/" class="home-link">← На главную</RouterLink>
+      <SettingsMenu />
+    </div>
 
     <div class="tabs">
       <button
@@ -280,6 +332,31 @@ onMounted(loadTree);
     </div>
 
     <template v-if="activeTab === 'tree'">
+      <div class="search-bar">
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="🔍 Поиск по имени..."
+          @keydown.enter="onSearchEnter"
+          @keydown.esc="clearSearch"
+        />
+        <button v-if="searchQuery" class="clear-btn" @click="clearSearch">✕</button>
+        <div v-if="searchResults.length > 0" class="search-results">
+          <div
+            v-for="person in searchResults.slice(0, 5)"
+            :key="person.id"
+            class="search-result"
+            @click="focusPerson(person.id)"
+          >
+            <span class="result-name">{{ person.name }}</span>
+            <span v-if="person.birthDate" class="result-date">{{ person.birthDate }}</span>
+          </div>
+        </div>
+        <p v-else-if="searchQuery && searchResults.length === 0" class="no-results">
+          Ничего не найдено
+        </p>
+      </div>
+
       <form class="add-form" @submit.prevent="addPerson">
         <div class="form-row">
           <input v-model="newName" type="text" placeholder="Имя" required />
@@ -315,6 +392,7 @@ onMounted(loadTree);
           <template #node-custom="nodeProps">
             <PersonCard
               v-bind="nodeProps"
+              :highlighted="highlightedId === nodeProps.data.id"
               @delete="deletePerson"
               @edit="editingPerson = nodeProps.data"
             />
@@ -332,6 +410,7 @@ onMounted(loadTree);
       @photo="savePhotoFromModal"
       @close="editingPerson = null"
     />
+
     <ConfirmDialog
       :show="confirmDialog.show"
       :title="confirmDialog.title"
@@ -405,6 +484,97 @@ onMounted(loadTree);
   background: var(--bg-secondary);
   color: var(--accent);
   box-shadow: var(--shadow-sm);
+}
+
+.search-bar {
+  position: relative;
+  margin-bottom: 16px;
+  max-width: 400px;
+}
+.search-bar input {
+  width: 100%;
+  padding: 10px 36px 10px 14px;
+  font-size: 14px;
+  border: 1px solid var(--border-input);
+  border-radius: 10px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.15s;
+  box-sizing: border-box;
+}
+.search-bar input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+}
+.clear-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border-radius: 50%;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s;
+}
+.clear-btn:hover {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.search-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  z-index: 100;
+}
+.search-result {
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.15s;
+}
+.search-result:hover {
+  background: var(--bg-hover);
+}
+.result-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.result-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.no-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 6px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  font-style: italic;
 }
 
 .add-form {
@@ -492,7 +662,7 @@ onMounted(loadTree);
 
 .flow-container {
   width: 100%;
-  height: calc(100vh - 200px);
+  height: calc(100vh - 300px);
   min-height: 500px;
   border: 1px solid var(--border-color);
   border-radius: 12px;
