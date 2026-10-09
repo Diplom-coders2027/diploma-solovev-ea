@@ -49,21 +49,21 @@ function getInitial(name: string): string {
 .person-card {
   position: relative;
   padding: 14px 14px 12px;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafd 100%);
-  border: 2px solid #4a90e2;
+  background: var(--bg-secondary);
+  border: 2px solid var(--accent);
   border-radius: 12px;
   font-family: system-ui, sans-serif;
   min-width: 160px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.15);
-  color: #1a1a1a;
+  box-shadow: var(--shadow-sm);
+  color: var(--text-primary);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 .person-card:hover {
   box-shadow: 0 6px 20px rgba(74, 144, 226, 0.35);
   transform: translateY(-2px);
-  border-color: #3a7bc8;
+  border-color: var(--accent-hover);
 }
 
 .card-actions {
@@ -94,19 +94,19 @@ function getInitial(name: string): string {
   transition: background 0.15s, color 0.15s;
 }
 .action-btn.edit {
-  background: #eaf2fb;
-  color: #4a90e2;
+  background: var(--accent-light);
+  color: var(--accent);
 }
 .action-btn.edit:hover {
-  background: #4a90e2;
+  background: var(--accent);
   color: white;
 }
 .action-btn.delete {
-  background: #fdecec;
-  color: #c00;
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 .action-btn.delete:hover {
-  background: #c00;
+  background: var(--danger);
   color: white;
 }
 
@@ -116,11 +116,11 @@ function getInitial(name: string): string {
   border-radius: 50%;
   margin: 0 auto 8px;
   overflow: hidden;
-  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid #ffffff;
+  border: 3px solid var(--bg-secondary);
   box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
 }
 .avatar img {
@@ -136,11 +136,11 @@ function getInitial(name: string): string {
 .name {
   font-weight: 600;
   font-size: 14px;
-  color: #1a1a1a;
+  color: var(--text-primary);
   margin-bottom: 2px;
 }
 .date {
   font-size: 12px;
-  color: #7a8699;
+  color: var(--text-muted);
 }
 </style>

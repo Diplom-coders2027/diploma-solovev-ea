@@ -10,10 +10,11 @@ function goToApp() {
 </script>
 
 <template>
-    <div class="top-right">
-  <SettingsMenu />
-</div>
   <div class="welcome">
+    <div class="top-right">
+      <SettingsMenu />
+    </div>
+
     <div class="welcome-content">
       <div class="logo">🌳</div>
       <h1>Семейный архив</h1>
@@ -64,6 +65,7 @@ body {
 
 <style scoped>
 .welcome {
+  position: relative;
   width: 100vw;
   min-height: 100vh;
   display: flex;
@@ -72,10 +74,11 @@ body {
   background:
     radial-gradient(circle at 20% 30%, rgba(74, 144, 226, 0.15) 0%, transparent 50%),
     radial-gradient(circle at 80% 70%, rgba(74, 144, 226, 0.1) 0%, transparent 50%),
-    linear-gradient(135deg, #f8fafd 0%, #eef4fb 100%);
+    var(--bg-primary);
   font-family: system-ui, sans-serif;
   padding: 40px 20px;
   box-sizing: border-box;
+  transition: background 0.2s;
 }
 .welcome-content {
   max-width: 800px;
@@ -93,14 +96,14 @@ body {
 }
 h1 {
   font-size: 48px;
-  color: #1a1a1a;
+  color: var(--text-primary);
   margin: 0 0 16px;
   font-weight: 700;
   letter-spacing: -1px;
 }
 .subtitle {
   font-size: 18px;
-  color: #5a6b7d;
+  color: var(--text-secondary);
   line-height: 1.6;
   margin: 0 0 40px;
   max-width: 560px;
@@ -112,7 +115,7 @@ h1 {
   font-size: 17px;
   font-weight: 600;
   color: white;
-  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   border: none;
   border-radius: 12px;
   cursor: pointer;
@@ -126,7 +129,6 @@ h1 {
 .enter-btn:active {
   transform: translateY(0);
 }
-
 .features {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -135,14 +137,14 @@ h1 {
 }
 .feature {
   padding: 24px 16px;
-  background: white;
+  background: var(--bg-secondary);
   border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--shadow-sm);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .feature:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(74, 144, 226, 0.15);
+  box-shadow: var(--shadow-md);
 }
 .feature-icon {
   font-size: 36px;
@@ -151,12 +153,12 @@ h1 {
 .feature-title {
   font-weight: 600;
   font-size: 16px;
-  color: #1a1a1a;
+  color: var(--text-primary);
   margin-bottom: 6px;
 }
 .feature-text {
   font-size: 13px;
-  color: #7a8699;
+  color: var(--text-muted);
   line-height: 1.5;
 }
 .top-right {
@@ -164,13 +166,8 @@ h1 {
   top: 20px;
   right: 20px;
 }
-.welcome {
-  position: relative;
-}
-
 @media (max-width: 700px) {
   h1 { font-size: 36px; }
   .subtitle { font-size: 16px; }
   .features { grid-template-columns: 1fr; }
-}
-</style>
+}</style>

@@ -268,15 +268,15 @@ onUnmounted(() => {
   gap: 16px;
 }
 .person-audio-card {
-  background: white;
-  border: 1px solid #e1e8f0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  transition: box-shadow 0.2s;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s, background 0.2s, border-color 0.2s;
 }
 .person-audio-card:hover {
-  box-shadow: 0 4px 16px rgba(74, 144, 226, 0.15);
+  box-shadow: var(--shadow-md);
 }
 .person-header {
   display: flex;
@@ -284,14 +284,14 @@ onUnmounted(() => {
   gap: 12px;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f3f7;
+  border-bottom: 1px solid var(--border-color);
 }
 .avatar {
   width: 44px;
   height: 44px;
   border-radius: 50%;
   overflow: hidden;
-  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -310,7 +310,7 @@ onUnmounted(() => {
 .person-name {
   font-weight: 600;
   font-size: 16px;
-  color: #1a1a1a;
+  color: var(--text-primary);
 }
 .audios {
   display: flex;
@@ -331,8 +331,8 @@ onUnmounted(() => {
   width: 28px;
   height: 28px;
   border: none;
-  background: #fdecec;
-  color: #c00;
+  background: var(--danger-bg);
+  color: var(--danger);
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
@@ -340,13 +340,13 @@ onUnmounted(() => {
   transition: all 0.15s;
 }
 .del-audio:hover {
-  background: #c00;
+  background: var(--danger);
   color: white;
 }
 .empty {
   margin: 0;
   font-size: 13px;
-  color: #999;
+  color: var(--text-muted);
   font-style: italic;
 }
 .actions {
@@ -360,13 +360,13 @@ onUnmounted(() => {
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
-  border: 1px dashed #4a90e2;
-  background: #eaf2fb;
-  color: #4a90e2;
+  border: 1px dashed var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
   text-align: center;
 }
 .action-btn:hover:not(:disabled) {
-  background: #4a90e2;
+  background: var(--accent);
   color: white;
 }
 .action-btn:disabled {
@@ -376,8 +376,8 @@ onUnmounted(() => {
 .action-btn.record {
   border-style: solid;
   border-color: #e74c3c;
-  background: #fdecec;
-  color: #e74c3c;
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 .action-btn.record:hover:not(:disabled) {
   background: #e74c3c;
@@ -402,5 +402,8 @@ onUnmounted(() => {
 .action-btn.upload input[type="file"] {
   position: absolute;
   left: -9999px;
+}
+.error {
+  color: var(--danger);
 }
 </style>

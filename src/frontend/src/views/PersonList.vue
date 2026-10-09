@@ -311,21 +311,41 @@ onMounted(loadTree);
   margin: 0;
   padding: 16px 24px;
   font-family: system-ui, sans-serif;
+  background: var(--bg-primary);
+  min-height: 100vh;
+  transition: background 0.2s;
 }
-h1 {
-  margin-bottom: 24px;
-  color: #1a1a1a;
-  font-size: 28px;
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.home-link {
+  display: inline-block;
+  padding: 6px 14px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+.home-link:hover {
+  color: var(--accent);
+  background: var(--accent-light);
 }
 
 .tabs {
   display: flex;
   gap: 4px;
   margin-bottom: 20px;
-  background: #f0f3f7;
+  background: var(--bg-tertiary);
   padding: 4px;
   border-radius: 10px;
   width: fit-content;
+  transition: background 0.2s;
 }
 .tab {
   padding: 8px 20px;
@@ -333,18 +353,18 @@ h1 {
   font-weight: 500;
   border: none;
   background: transparent;
-  color: #5a6b7d;
+  color: var(--text-secondary);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
 }
 .tab:hover {
-  color: #4a90e2;
+  color: var(--accent);
 }
 .tab.active {
-  background: white;
-  color: #4a90e2;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  background: var(--bg-secondary);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
 }
 
 .add-form {
@@ -353,9 +373,10 @@ h1 {
   gap: 10px;
   margin-bottom: 24px;
   padding: 16px;
-  background: #f8fafd;
-  border: 1px solid #e1e8f0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
+  transition: background 0.2s, border-color 0.2s;
 }
 .form-row {
   display: flex;
@@ -367,16 +388,16 @@ h1 {
 .add-form select {
   padding: 10px 12px;
   font-size: 14px;
-  border: 1px solid #d0d7de;
+  border: 1px solid var(--border-input);
   border-radius: 8px;
-  background: white;
-  color: #1a1a1a;
+  background: var(--bg-input);
+  color: var(--text-primary);
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.2s, color 0.2s;
 }
 .add-form input:focus,
 .add-form select:focus {
-  border-color: #4a90e2;
+  border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
 }
 .add-form input[type="text"] {
@@ -391,14 +412,14 @@ h1 {
   font-size: 14px;
   font-weight: 500;
   color: white;
-  background: #4a90e2;
+  background: var(--accent);
   border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
 }
 .add-form button:hover {
-  background: #3a7bc8;
+  background: var(--accent-hover);
 }
 
 .file-input {
@@ -414,10 +435,10 @@ h1 {
   display: inline-block;
   padding: 10px 16px;
   font-size: 14px;
-  background: white;
-  border: 1px dashed #4a90e2;
+  background: var(--bg-input);
+  border: 1px dashed var(--accent);
   border-radius: 8px;
-  color: #4a90e2;
+  color: var(--accent);
   cursor: pointer;
   transition: all 0.15s;
   max-width: 220px;
@@ -426,41 +447,22 @@ h1 {
   white-space: nowrap;
 }
 .file-label:hover {
-  background: #eaf2fb;
+  background: var(--accent-light);
 }
 
 .flow-container {
   width: 100%;
   height: calc(100vh - 200px);
   min-height: 500px;
-  border: 1px solid #e1e8f0;
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   background:
-    radial-gradient(circle at 1px 1px, #e8eef5 1px, transparent 0) 0 0 / 20px 20px,
-    #fafbfc;
-}
-
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-.home-link {
-  display: inline-block;
-  padding: 6px 14px;
-  font-size: 14px;
-  color: #5a6b7d;
-  text-decoration: none;
-  border-radius: 8px;
-  transition: all 0.15s;
-}
-.home-link:hover {
-  color: #4a90e2;
-  background: #eaf2fb;
+    radial-gradient(circle at 1px 1px, var(--graph-bg-dot) 1px, transparent 0) 0 0 / 20px 20px,
+    var(--bg-primary);
+  transition: background 0.2s, border-color 0.2s;
 }
 
 .error {
-  color: #c00;
+  color: var(--danger);
 }
 </style>

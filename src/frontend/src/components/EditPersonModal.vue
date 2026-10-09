@@ -137,14 +137,16 @@ function onSave() {
   z-index: 1000;
 }
 .modal {
-  background: white;
+  background: var(--bg-elevated);
   padding: 24px;
   border-radius: 12px;
   min-width: 400px;
   max-width: 500px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
   font-family: system-ui, sans-serif;
   animation: modalIn 0.2s ease-out;
+  color: var(--text-primary);
+  transition: background 0.2s, color 0.2s;
 }
 @keyframes modalIn {
   from {
@@ -158,13 +160,13 @@ function onSave() {
 }
 h2 {
   margin: 0 0 20px;
-  color: #000;
+  color: var(--text-primary);
 }
 label {
   display: block;
   margin-bottom: 14px;
   font-size: 14px;
-  color: #333;
+  color: var(--text-secondary);
 }
 input,
 select {
@@ -173,9 +175,18 @@ select {
   margin-top: 4px;
   padding: 8px;
   font-size: 14px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border-input);
   border-radius: 4px;
   box-sizing: border-box;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s, background 0.2s, color 0.2s;
+}
+input:focus,
+select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
 }
 .buttons {
   display: flex;
@@ -187,16 +198,22 @@ button {
   padding: 8px 16px;
   font-size: 14px;
   border-radius: 4px;
-  border: 1px solid #ccc;
-  background: white;
+  border: 1px solid var(--border-input);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   cursor: pointer;
+  transition: all 0.15s;
+}
+button:hover {
+  background: var(--bg-hover);
 }
 button.primary {
-  background: #4a90e2;
+  background: var(--accent);
   color: white;
-  border-color: #4a90e2;
+  border-color: var(--accent);
 }
 button.primary:hover {
-  background: #3a7bc8;
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 </style>
