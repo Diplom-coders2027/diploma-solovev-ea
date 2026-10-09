@@ -321,13 +321,13 @@ onMounted(() => {
         :class="['tab', { active: activeTab === 'tree' }]"
         @click="activeTab = 'tree'"
       >
-        🌳 Дерево
+        Дерево
       </button>
       <button
         :class="['tab', { active: activeTab === 'audio' }]"
         @click="activeTab = 'audio'"
       >
-        🎵 Аудио
+        Аудио
       </button>
     </div>
 
@@ -336,7 +336,7 @@ onMounted(() => {
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="🔍 Поиск по имени..."
+          placeholder="Поиск по имени..."
           @keydown.enter="onSearchEnter"
           @keydown.esc="clearSearch"
         />
@@ -378,10 +378,10 @@ onMounted(() => {
           <label class="file-input">
             <input type="file" accept="image/*" @change="onFileSelect" />
             <span class="file-label">
-              {{ selectedFile ? selectedFile.name : '📷 Выбрать фото' }}
+              {{ selectedFile ? selectedFile.name : 'Выбрать фото' }}
             </span>
           </label>
-          <button type="submit">➕ Добавить</button>
+          <button type="submit">+ Добавить</button>
         </div>
       </form>
 
