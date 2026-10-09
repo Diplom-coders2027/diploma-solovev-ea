@@ -4,6 +4,7 @@ import axios from 'axios';
 import { VueFlow, MarkerType } from '@vue-flow/core';
 import dagre from '@dagrejs/dagre';
 import PersonCard from '../components/PersonCard.vue';
+import EditPersonModal from '../components/EditPersonModal.vue';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -31,13 +32,13 @@ const newParent2Id = ref<number | null>(null);
 const flatPersons = ref<Person[]>([]);
 const selectedFile = ref<File | null>(null);
 
-// Красивое дерево через dagre
+const editingPerson = ref<Person | null>(null);
+
 const elements = computed(() => {
   const nodes: any[] = [];
   const edges: any[] = [];
   const seenIds = new Set<string>();
 
-  // 1. Собираем все узлы и рёбра
   const traverse = (persons: Person[]) => {
     persons.forEach((p) => {
       const nodeId = String(p.id);
@@ -52,7 +53,6 @@ const elements = computed(() => {
         });
       }
 
-      // Ребро от первого родителя
       if (p.parentId) {
         edges.push({
           id: `e${p.parentId}-${p.id}`,
@@ -69,7 +69,6 @@ const elements = computed(() => {
         });
       }
 
-      // Ребро от второго родителя
       if (p.parent2Id) {
         edges.push({
           id: `e${p.parent2Id}-${p.id}`,
@@ -94,7 +93,6 @@ const elements = computed(() => {
 
   traverse(treeData.value);
 
-  // 2. Раскладываем через dagre
   const g = new dagre.graphlib.Graph();
   g.setGraph({ rankdir: 'TB', nodesep: 80, ranksep: 120 });
   g.setDefaultEdgeLabel(() => ({}));
@@ -109,7 +107,6 @@ const elements = computed(() => {
 
   dagre.layout(g);
 
-  // 3. Применяем позиции
   const layoutedNodes = nodes.map((node) => {
     const pos = g.node(node.id);
     return {
@@ -181,6 +178,28 @@ async function addPerson() {
   }
 }
 
+async function savePerson(data: {
+  id: number;
+  name: string;
+  birthDate: string | null;
+  parentId: number | null;
+  parent2Id: number | null;
+}) {
+  try {
+    await axios.put(`${API}/persons/${data.id}`, {
+      name: data.name,
+      birthDate: data.birthDate,
+      parentId: data.parentId,
+      parent2Id: data.parent2Id,
+    });
+    editingPerson.value = null;
+    await loadTree();
+  } catch (e) {
+    alert('Не удалось сохранить изменения');
+    console.error(e);
+  }
+}
+
 async function deletePerson(id: number) {
   if (!confirm('Удалить этого человека?')) return;
   try {
@@ -223,10 +242,21 @@ onMounted(loadTree);
     <div v-else class="flow-container">
       <VueFlow :nodes="elements.nodes" :edges="elements.edges">
         <template #node-custom="nodeProps">
-          <PersonCard v-bind="nodeProps" @delete="deletePerson" />
+          <PersonCard
+            v-bind="nodeProps"
+            @delete="deletePerson"
+            @edit="editingPerson = nodeProps.data"
+          />
         </template>
       </VueFlow>
     </div>
+
+    <EditPersonModal
+      :person="editingPerson"
+      :all-persons="flatPersons"
+      @save="savePerson"
+      @close="editingPerson = null"
+    />
   </div>
 </template>
 

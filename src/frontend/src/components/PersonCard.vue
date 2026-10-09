@@ -7,7 +7,10 @@ interface Person {
 }
 
 defineProps<{ data: Person }>();
-const emit = defineEmits<{ (e: 'delete', id: number): void }>();
+const emit = defineEmits<{
+  (e: 'delete', id: number): void;
+  (e: 'edit'): void;
+}>();
 
 const API = 'http://localhost:3000';
 
@@ -22,8 +25,8 @@ function getInitial(name: string): string {
 </script>
 
 <template>
-  <div class="person-card">
-    <button class="delete-btn" @click="emit('delete', data.id)">✕</button>
+  <div class="person-card" @dblclick="emit('edit')">
+    <button class="delete-btn" @click.stop="emit('delete', data.id)">✕</button>
     <div class="avatar">
       <img v-if="data.photoUrl" :src="getPhotoUrl(data.photoUrl)!" :alt="data.name" />
       <span v-else class="initial">{{ getInitial(data.name) }}</span>
@@ -45,6 +48,11 @@ function getInitial(name: string): string {
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   color: #000;
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.person-card:hover {
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
 }
 .avatar {
   width: 56px;
@@ -57,10 +65,25 @@ function getInitial(name: string): string {
   align-items: center;
   justify-content: center;
 }
-.avatar img { width: 100%; height: 100%; object-fit: cover; }
-.initial { color: white; font-size: 24px; font-weight: 600; }
-.name { font-weight: 600; font-size: 14px; }
-.date { font-size: 12px; color: #666; margin-top: 2px; }
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.initial {
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
+}
+.name {
+  font-weight: 600;
+  font-size: 14px;
+}
+.date {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
 .delete-btn {
   position: absolute;
   top: 4px;
@@ -76,5 +99,7 @@ function getInitial(name: string): string {
   padding: 0;
   line-height: 1;
 }
-.delete-btn:hover { background: #fee; }
+.delete-btn:hover {
+  background: #fee;
+}
 </style>

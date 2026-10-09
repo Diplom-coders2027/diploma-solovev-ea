@@ -42,12 +42,10 @@ router.get('/tree', async (req: Request, res: Response) => {
   const map = new Map<number, TreeNode>();
   const roots: TreeNode[] = [];
 
-  // Создаём узлы
   persons.forEach((p) => {
     map.set(p.id, { ...p, children: [] });
   });
 
-  // Связываем — с учётом обоих родителей
   persons.forEach((p) => {
     const node = map.get(p.id)!;
     let hasParent = false;
@@ -103,6 +101,33 @@ router.post('/', async (req: Request, res: Response) => {
     data: { name, birthDate, parentId, parent2Id },
   });
   res.status(201).json(newPerson);
+});
+
+// PUT /persons/:id — обновить
+router.put('/:id', async (req: Request, res: Response) => {
+  const id = Number(req.params.id);
+  const { name, birthDate, parentId, parent2Id } = req.body as {
+    name?: string;
+    birthDate?: string | null;
+    parentId?: number | null;
+    parent2Id?: number | null;
+  };
+
+  try {
+    const updated = await prisma.person.update({
+      where: { id },
+      data: {
+        ...(name !== undefined && { name }),
+        ...(birthDate !== undefined && { birthDate }),
+        ...(parentId !== undefined && { parentId }),
+        ...(parent2Id !== undefined && { parent2Id }),
+      },
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error(error);
+    res.status(404).json({ error: 'Person not found' });
+  }
 });
 
 // DELETE /persons/:id — удалить
