@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
 interface Person {
@@ -23,6 +23,13 @@ const audiosByPerson = ref<Record<number, AudioItem[]>>({});
 const loading = ref(true);
 const error = ref<string | null>(null);
 
+// Состояние записи
+const recordingPersonId = ref<number | null>(null);
+const mediaRecorder = ref<MediaRecorder | null>(null);
+const recordedChunks = ref<Blob[]>([]);
+const recordingSeconds = ref(0);
+let timerInterval: ReturnType<typeof setInterval> | null = null;
+
 async function loadAll() {
   loading.value = true;
   error.value = null;
@@ -45,6 +52,97 @@ async function loadAll() {
     loading.value = false;
   }
 }
+
+// ---------- Запись с микрофона ----------
+
+async function startRecording(personId: number) {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    const options: MediaRecorderOptions = {};
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      options.mimeType = 'audio/webm;codecs=opus';
+    } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+      options.mimeType = 'audio/webm';
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      options.mimeType = 'audio/mp4';
+    }
+
+    const recorder = new MediaRecorder(stream, options);
+    recordedChunks.value = [];
+
+    recorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunks.value.push(event.data);
+      }
+    };
+
+    recorder.onstop = async () => {
+      // Останавливаем дорожки микрофона
+      stream.getTracks().forEach((track) => track.stop());
+
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+
+      // Сохраняем запись
+      await saveRecording(personId);
+
+      recordingPersonId.value = null;
+      mediaRecorder.value = null;
+      recordingSeconds.value = 0;
+    };
+
+    recorder.start();
+    mediaRecorder.value = recorder;
+    recordingPersonId.value = personId;
+    recordingSeconds.value = 0;
+
+    // Таймер записи
+    timerInterval = setInterval(() => {
+      recordingSeconds.value++;
+    }, 1000);
+  } catch (e) {
+    alert('Не удалось получить доступ к микрофону. Проверьте разрешения браузера.');
+    console.error(e);
+  }
+}
+
+function stopRecording() {
+  if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
+    mediaRecorder.value.stop();
+  }
+}
+
+async function saveRecording(personId: number) {
+  if (recordedChunks.value.length === 0) return;
+
+  const mimeType = mediaRecorder.value?.mimeType || 'audio/webm';
+  const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+  const blob = new Blob(recordedChunks.value, { type: mimeType });
+
+  const formData = new FormData();
+  formData.append('audio', blob, `recording-${Date.now()}.${extension}`);
+
+  try {
+    await axios.post(`${API}/persons/${personId}/audio`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    await loadAll();
+  } catch (e) {
+    alert('Не удалось сохранить запись');
+    console.error(e);
+  }
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+// ---------- Загрузка файла ----------
 
 async function uploadAudio(personId: number, event: Event) {
   const input = event.target as HTMLInputElement;
@@ -87,6 +185,13 @@ function getInitial(name: string): string {
 }
 
 onMounted(loadAll);
+
+onUnmounted(() => {
+  if (timerInterval) clearInterval(timerInterval);
+  if (mediaRecorder.value && mediaRecorder.value.state !== 'inactive') {
+    mediaRecorder.value.stop();
+  }
+});
 </script>
 
 <template>
@@ -120,14 +225,34 @@ onMounted(loadAll);
           </p>
         </div>
 
-        <label class="upload-btn">
-          <input
-            type="file"
-            accept="audio/*"
-            @change="(e) => uploadAudio(person.id, e)"
-          />
-          <span>📁 Загрузить аудио</span>
-        </label>
+        <div class="actions">
+          <button
+            v-if="recordingPersonId !== person.id"
+            class="action-btn record"
+            @click="startRecording(person.id)"
+            :disabled="recordingPersonId !== null"
+          >
+            🎤 Записать
+          </button>
+
+          <button
+            v-else
+            class="action-btn stop"
+            @click="stopRecording"
+          >
+            ⏹ Стоп ({{ formatTime(recordingSeconds) }})
+          </button>
+
+          <label class="action-btn upload">
+            <input
+              type="file"
+              accept="audio/*"
+              @change="(e) => uploadAudio(person.id, e)"
+              :disabled="recordingPersonId !== null"
+            />
+            <span>📁 Загрузить</span>
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -224,32 +349,58 @@ onMounted(loadAll);
   color: #999;
   font-style: italic;
 }
-.upload-btn {
-  display: block;
-  position: relative;
-  overflow: hidden;
+.actions {
+  display: flex;
+  gap: 8px;
 }
-.upload-btn input[type="file"] {
-  position: absolute;
-  left: -9999px;
-}
-.upload-btn span {
-  display: block;
-  text-align: center;
+.action-btn {
+  flex: 1;
   padding: 8px 12px;
   font-size: 13px;
-  color: #4a90e2;
-  background: #eaf2fb;
-  border: 1px dashed #4a90e2;
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
+  border: 1px dashed #4a90e2;
+  background: #eaf2fb;
+  color: #4a90e2;
+  text-align: center;
 }
-.upload-btn span:hover {
+.action-btn:hover:not(:disabled) {
   background: #4a90e2;
   color: white;
 }
-.error {
-  color: #c00;
+.action-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.action-btn.record {
+  border-style: solid;
+  border-color: #e74c3c;
+  background: #fdecec;
+  color: #e74c3c;
+}
+.action-btn.record:hover:not(:disabled) {
+  background: #e74c3c;
+  color: white;
+}
+.action-btn.stop {
+  border-style: solid;
+  border-color: #e74c3c;
+  background: #e74c3c;
+  color: white;
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.action-btn.upload {
+  position: relative;
+  overflow: hidden;
+  display: block;
+}
+.action-btn.upload input[type="file"] {
+  position: absolute;
+  left: -9999px;
 }
 </style>

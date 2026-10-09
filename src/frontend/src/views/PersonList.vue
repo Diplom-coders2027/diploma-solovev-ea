@@ -6,6 +6,8 @@ import dagre from '@dagrejs/dagre';
 import PersonCard from '../components/PersonCard.vue';
 import EditPersonModal from '../components/EditPersonModal.vue';
 import AudioLibrary from '../components/AudioLibrary.vue';
+import { RouterLink } from 'vue-router';
+import SettingsMenu from '../components/SettingsMenu.vue';
 
 import '@vue-flow/core/dist/style.css';
 import '@vue-flow/core/dist/theme-default.css';
@@ -227,7 +229,10 @@ onMounted(loadTree);
 
 <template>
   <div class="person-list">
-    <h1>Семейный архив</h1>
+    <div class="top-bar">
+  <RouterLink to="/" class="home-link">← На главную</RouterLink>
+  <SettingsMenu />
+</div>
 
     <div class="tabs">
       <button
@@ -302,9 +307,9 @@ onMounted(loadTree);
 
 <style scoped>
 .person-list {
-  max-width: 1400px;
-  margin: 40px auto;
-  padding: 20px;
+  max-width: 100%;
+  margin: 0;
+  padding: 16px 24px;
   font-family: system-ui, sans-serif;
 }
 h1 {
@@ -426,13 +431,35 @@ h1 {
 
 .flow-container {
   width: 100%;
-  height: 700px;
+  height: calc(100vh - 200px);
+  min-height: 500px;
   border: 1px solid #e1e8f0;
   border-radius: 12px;
   background:
     radial-gradient(circle at 1px 1px, #e8eef5 1px, transparent 0) 0 0 / 20px 20px,
     #fafbfc;
 }
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.home-link {
+  display: inline-block;
+  padding: 6px 14px;
+  font-size: 14px;
+  color: #5a6b7d;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+.home-link:hover {
+  color: #4a90e2;
+  background: #eaf2fb;
+}
+
 .error {
   color: #c00;
 }
