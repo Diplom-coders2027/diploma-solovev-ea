@@ -3,11 +3,13 @@ import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { VueFlow, MarkerType, useVueFlow } from '@vue-flow/core';
 import dagre from '@dagrejs/dagre';
+import { toPng } from 'html-to-image';
 import PersonCard from '../components/PersonCard.vue';
 import EditPersonModal from '../components/EditPersonModal.vue';
 import AudioLibrary from '../components/AudioLibrary.vue';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
 import SettingsMenu from '../components/SettingsMenu.vue';
+import Statistics from '../components/Statistics.vue';
 import { RouterLink } from 'vue-router';
 
 import '@vue-flow/core/dist/style.css';
@@ -23,7 +25,7 @@ interface Person {
   children: Person[];
 }
 
-const API = 'http://localhost:3000';
+const API = `http://${window.location.hostname}:3000`;
 
 const treeData = ref<Person[]>([]);
 const loading = ref(true);
@@ -37,11 +39,11 @@ const flatPersons = ref<Person[]>([]);
 const selectedFile = ref<File | null>(null);
 
 const editingPerson = ref<Person | null>(null);
-
-const activeTab = ref<'tree' | 'audio'>('tree');
+const activeTab = ref<'tree' | 'audio' | 'stats'>('tree');
+const flowContainerRef = ref<HTMLElement | null>(null);
 
 // Поиск
-const { setCenter } = useVueFlow();
+const { setCenter, fitView } = useVueFlow();
 const searchQuery = ref('');
 const highlightedId = ref<number | null>(null);
 let highlightTimer: ReturnType<typeof setTimeout> | null = null;
@@ -54,7 +56,7 @@ const searchResults = computed(() => {
   );
 });
 
-// Подтверждение
+// Подтверждение удаления
 const confirmDialog = ref<{
   show: boolean;
   title: string;
@@ -206,6 +208,36 @@ function clearSearch() {
   if (highlightTimer) clearTimeout(highlightTimer);
 }
 
+// Экспорт в PNG
+async function exportToPng() {
+  if (!flowContainerRef.value) return;
+
+  try {
+    // Сбрасываем подсветку перед скриншотом (чтобы не попала в PNG)
+    highlightedId.value = null;
+    if (highlightTimer) clearTimeout(highlightTimer);
+
+    // Вписываем всё дерево в экран, чтобы ничего не обрезалось
+    await fitView({ padding: 0.1, duration: 300 });
+    // Даём Vue Flow время на отрисовку
+    await new Promise((r) => setTimeout(r, 400));
+
+    const dataUrl = await toPng(flowContainerRef.value, {
+      backgroundColor: getComputedStyle(document.body).backgroundColor,
+      quality: 1,
+      pixelRatio: 2,
+    });
+
+    const link = document.createElement('a');
+    link.download = `family-tree-${Date.now()}.png`;
+    link.href = dataUrl;
+    link.click();
+  } catch (e) {
+    alert('Не удалось создать PNG');
+    console.error(e);
+  }
+}
+
 function onFileSelect(event: Event) {
   const input = event.target as HTMLInputElement;
   if (input.files && input.files[0]) {
@@ -321,13 +353,28 @@ onMounted(() => {
         :class="['tab', { active: activeTab === 'tree' }]"
         @click="activeTab = 'tree'"
       >
-        Дерево
+        🌳 Дерево
       </button>
       <button
         :class="['tab', { active: activeTab === 'audio' }]"
         @click="activeTab = 'audio'"
       >
-        Аудио
+        🎵 Аудио
+      </button>
+      <button
+        :class="['tab', { active: activeTab === 'stats' }]"
+        @click="activeTab = 'stats'"
+      >
+        📊 Статистика
+      </button>
+      
+      <button
+        v-if="activeTab === 'tree'"
+        class="tab export-tab"
+        @click="exportToPng"
+        title="Скачать дерево как PNG"
+      >
+        📸 Скачать PNG
       </button>
     </div>
 
@@ -336,7 +383,7 @@ onMounted(() => {
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Поиск по имени..."
+          placeholder="🔍 Поиск по имени..."
           @keydown.enter="onSearchEnter"
           @keydown.esc="clearSearch"
         />
@@ -378,16 +425,16 @@ onMounted(() => {
           <label class="file-input">
             <input type="file" accept="image/*" @change="onFileSelect" />
             <span class="file-label">
-              {{ selectedFile ? selectedFile.name : 'Выбрать фото' }}
+              {{ selectedFile ? selectedFile.name : '📷 Выбрать фото' }}
             </span>
           </label>
-          <button type="submit">+ Добавить</button>
+          <button type="submit">➕ Добавить</button>
         </div>
       </form>
 
       <p v-if="loading">Загрузка...</p>
       <p v-else-if="error" class="error">{{ error }}</p>
-      <div v-else class="flow-container">
+      <div v-else class="flow-container" ref="flowContainerRef">
         <VueFlow :nodes="elements.nodes" :edges="elements.edges">
           <template #node-custom="nodeProps">
             <PersonCard
@@ -401,7 +448,8 @@ onMounted(() => {
       </div>
     </template>
 
-    <AudioLibrary v-else />
+    <AudioLibrary v-if="activeTab === 'audio'" />
+    <Statistics v-else-if="activeTab === 'stats'" />
 
     <EditPersonModal
       :person="editingPerson"
@@ -463,7 +511,7 @@ onMounted(() => {
   background: var(--bg-tertiary);
   padding: 4px;
   border-radius: 10px;
-  width: fit-content;
+  width: 100%;
   transition: background 0.2s;
 }
 .tab {
@@ -484,6 +532,13 @@ onMounted(() => {
   background: var(--bg-secondary);
   color: var(--accent);
   box-shadow: var(--shadow-sm);
+}
+.export-tab {
+  margin-left: auto;
+  color: var(--accent);
+}
+.export-tab:hover {
+  background: var(--accent-light);
 }
 
 .search-bar {
