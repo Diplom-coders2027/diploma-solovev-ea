@@ -5,7 +5,7 @@ type Theme = 'light' | 'dark' | 'system';
 const STORAGE_KEY = 'family-archive-theme';
 
 const currentTheme = ref<Theme>(
-  (localStorage.getItem(STORAGE_KEY) as Theme) || 'system'
+  (localStorage.getItem(STORAGE_KEY) as Theme) || 'dark'
 );
 
 function applyTheme(theme: Theme) {

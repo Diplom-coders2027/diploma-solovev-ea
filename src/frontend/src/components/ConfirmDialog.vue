@@ -17,11 +17,8 @@ const emit = defineEmits<{
 <template>
   <Transition name="modal-fade">
     <div v-if="show" class="modal-overlay" @click.self="emit('cancel')">
-      <div class="modal">
-        <div class="icon" :class="{ danger }">
-          {{ danger ? '⚠️' : '❓' }}
-        </div>
-        <h3>{{ title }}</h3>
+      <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+        <h3 id="confirm-title">{{ title }}</h3>
         <p>{{ message }}</p>
 
         <div class="buttons">
@@ -45,9 +42,7 @@ const emit = defineEmits<{
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10, 10, 12, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,71 +52,45 @@ const emit = defineEmits<{
 
 .modal {
   background: var(--bg-elevated);
-  padding: 28px 24px 20px;
-  border-radius: 16px;
-  max-width: 420px;
+  padding: 28px 28px 22px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  max-width: 440px;
   width: 100%;
-  text-align: center;
   box-shadow: var(--shadow-lg);
-  font-family: system-ui, sans-serif;
   color: var(--text-primary);
-  animation: modalIn 0.2s ease-out;
-}
-@keyframes modalIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.icon {
-  font-size: 44px;
-  line-height: 1;
-  margin-bottom: 12px;
-}
-.icon.danger {
-  animation: shake 0.4s;
-}
-@keyframes shake {
-  0%, 100% { transform: rotate(0); }
-  25% { transform: rotate(-10deg); }
-  75% { transform: rotate(10deg); }
 }
 
 h3 {
-  margin: 0 0 8px;
-  font-size: 20px;
+  margin: 0 0 10px;
+  font-size: 22px;
+  line-height: 1.2;
   color: var(--text-primary);
 }
 
 p {
-  margin: 0 0 24px;
-  font-size: 14px;
+  margin: 0 0 26px;
+  font-size: 15px;
   color: var(--text-secondary);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .buttons {
   display: flex;
   gap: 10px;
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .btn {
-  padding: 10px 24px;
+  padding: 10px 20px;
   font-size: 14px;
   font-weight: 500;
-  border-radius: 10px;
-  cursor: pointer;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border-input);
-  background: var(--bg-secondary);
+  background: transparent;
   color: var(--text-primary);
-  transition: all 0.15s;
-  min-width: 100px;
+  transition: background-color 0.15s, border-color 0.15s;
+  min-width: 96px;
 }
 .btn:hover {
   background: var(--bg-hover);
@@ -129,7 +98,7 @@ p {
 
 .btn.confirm {
   background: var(--accent);
-  color: white;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 .btn.confirm:hover {
@@ -138,21 +107,66 @@ p {
 }
 
 .btn.confirm.danger {
-  background: #e74c3c;
-  border-color: #e74c3c;
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+  color: #fff;
 }
 .btn.confirm.danger:hover {
-  background: #c0392b;
-  border-color: #c0392b;
+  background: var(--danger-solid-hover);
+  border-color: var(--danger-solid-hover);
 }
 
-/* Плавное появление */
 .modal-fade-enter-active,
 .modal-fade-leave-active {
-  transition: opacity 0.2s;
+  transition: opacity 0.15s;
 }
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
+}
+
+/* ---------- Мягкие формы и движение ---------- */
+.modal-overlay {
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+.modal {
+  border-radius: var(--radius-lg);
+  animation: modalIn 0.3s var(--ease);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.95); }
+  to { opacity: 1; transform: none; }
+}
+.btn,
+button {
+  border-radius: 999px;
+}
+
+/* ---------- Анимации кнопок ---------- */
+.btn {
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.25s var(--ease), box-shadow 0.25s;
+}
+.btn:hover {
+  transform: translateY(-2px);
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn.confirm:hover {
+  box-shadow: 0 8px 20px var(--accent-ring);
+}
+.btn.confirm::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.3) 50%, transparent 70%);
+  transform: translateX(-120%);
+}
+.btn.confirm:hover::after {
+  transform: translateX(120%);
+  transition: transform 0.75s var(--ease);
 }
 </style>

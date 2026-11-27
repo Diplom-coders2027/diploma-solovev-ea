@@ -1,62 +1,114 @@
-/* Цветовые переменные для светлой темы */
+/*
+  Дизайн-система «Семейный архив» — чёрно-белая.
+  Обе темы монохромные: нейтральные серые, белый и чёрный акцент,
+  мягкие скругления, круглые портреты и живое движение.
+  Единственный цветной — красный, только для опасных действий и ошибок.
+  Тёмная тема — основная.
+*/
+
+/* ---------- Светлая тема: чёрно-белая ---------- */
 :root,
 [data-theme="light"] {
-  --bg-primary: #f8fafd;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f0f3f7;
+  color-scheme: light;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: #f6f6f6;
+  --bg-tertiary: #ebebeb;
   --bg-elevated: #ffffff;
   --bg-input: #ffffff;
-  --bg-hover: #eaf2fb;
+  --bg-hover: #efefef;
 
-  --text-primary: #1a1a1a;
-  --text-secondary: #5a6b7d;
-  --text-muted: #7a8699;
+  --text-primary: #0a0a0a;
+  --text-secondary: #3d3d3d;
+  --text-muted: #666666;
 
-  --border-color: #e1e8f0;
-  --border-input: #d0d7de;
+  --border-color: #e0e0e0;
+  --border-strong: #bdbdbd;
+  --border-input: #a8a8a8;
 
-  --accent: #4a90e2;
-  --accent-hover: #3a7bc8;
-  --accent-light: #eaf2fb;
+  --accent: #0a0a0a;
+  --accent-hover: #333333;
+  --accent-light: #efefef;
+  --accent-ring: rgba(0, 0, 0, 0.2);
+  --on-accent: #ffffff;
 
-  --danger: #c00;
-  --danger-bg: #fdecec;
+  --highlight: #0a0a0a;
+  --highlight-ring: rgba(0, 0, 0, 0.25);
+  --highlight-soft: #8a8a8a;
 
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.2);
+  --danger: #b3261e;
+  --danger-bg: #f8e3e1;
+  --danger-solid: #b3261e;
+  --danger-solid-hover: #8f1d17;
 
-  --graph-bg-dot: #e8eef5;
+  --success: #1a1a1a;
+  --success-bg: #ebebeb;
+
+  --edge: #9a9a9a;
+  --spot: transparent;
+  --grid-line: transparent;
+  --graph-bg-dot: rgba(0, 0, 0, 0.13);
+
+  --shadow-sm: none;
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.2);
 }
 
-/* Цветовые переменные для тёмной темы */
+/* ---------- Тёмная тема (основная) ---------- */
 [data-theme="dark"] {
-  --bg-primary: #1a1d23;
-  --bg-secondary: #242830;
-  --bg-tertiary: #2d323d;
-  --bg-elevated: #2d323d;
-  --bg-input: #2d323d;
-  --bg-hover: #2d323d;
+  color-scheme: dark;
 
-  --text-primary: #e8edf4;
-  --text-secondary: #a8b2bf;
-  --text-muted: #7a8699;
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #171717;
+  --bg-tertiary: #222222;
+  --bg-elevated: #1e1e1e;
+  --bg-input: #141414;
+  --bg-hover: #272727;
 
-  --border-color: #3a4050;
-  --border-input: #3a4050;
+  --text-primary: #f2f2f2;
+  --text-secondary: #b5b5b5;
+  --text-muted: #8c8c8c;
 
-  --accent: #5a9ee8;
-  --accent-hover: #7ab0f0;
-  --accent-light: #1e2a3a;
+  --border-color: #2a2a2a;
+  --border-strong: #444444;
+  --border-input: #444444;
 
-  --danger: #ff6b6b;
-  --danger-bg: #3a1e1e;
+  --accent: #f2f2f2;
+  --accent-hover: #ffffff;
+  --accent-light: #272727;
+  --accent-ring: rgba(255, 255, 255, 0.28);
+  --on-accent: #0f0f0f;
 
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --highlight: #f2f2f2;
+  --highlight-ring: rgba(255, 255, 255, 0.35);
+  --highlight-soft: #8c8c8c;
 
-  --graph-bg-dot: #2d323d;
+  --danger: #ff8a80;
+  --danger-bg: #3b1d1f;
+  --danger-solid: #d9483a;
+  --danger-solid-hover: #e8604f;
+
+  --success: #e6e6e6;
+  --success-bg: #222222;
+
+  --edge: #777777;
+  --spot: transparent;
+  --grid-line: transparent;
+  --graph-bg-dot: rgba(255, 255, 255, 0.11);
+
+  --shadow-sm: none;
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.7);
+}
+
+/* ---------- Общие токены ---------- */
+:root {
+  --font-display: "Literata", Georgia, "Times New Roman", serif;
+  --font-ui: "Onest", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 *,
@@ -75,9 +127,9 @@ body {
 }
 
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-ui);
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.55;
   color: var(--text-primary);
   background: var(--bg-primary);
   -webkit-font-smoothing: antialiased;
@@ -87,6 +139,14 @@ body {
 #app {
   width: 100%;
   min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-ui);
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
 
 a {
@@ -99,12 +159,61 @@ a:hover {
   color: var(--accent-hover);
 }
 
-button {
-  font-family: inherit;
-}
-
+button,
 input,
 select,
 textarea {
   font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Видимый фокус с клавиатуры */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* ---------- Общая анимация ---------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.82); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+:where(button:not(:disabled)):active {
+  transform: scale(0.97);
+}
+
+/* Пульс точек у курсора */
+@property --pulse {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Плавное изменение «силы подсветки» поля дерева */
+@property --glow {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
 }

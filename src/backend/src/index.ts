@@ -1,4 +1,5 @@
 import express from 'express';
+import statsRouter from './routes/stats';
 import cors from 'cors';
 import path from 'path';
 import personsRouter from './routes/persons';
@@ -13,6 +14,7 @@ app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.use('/persons', personsRouter);
+app.use('/stats', statsRouter);
 
 app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);

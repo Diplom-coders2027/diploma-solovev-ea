@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue';
 import axios from 'axios';
+import { toPng } from 'html-to-image';
 import { VueFlow, MarkerType, useVueFlow } from '@vue-flow/core';
 import dagre from '@dagrejs/dagre';
-import { toPng } from 'html-to-image';
 import PersonCard from '../components/PersonCard.vue';
 import EditPersonModal from '../components/EditPersonModal.vue';
 import AudioLibrary from '../components/AudioLibrary.vue';
 import ConfirmDialog from '../components/ConfirmDialog.vue';
 import SettingsMenu from '../components/SettingsMenu.vue';
 import Statistics from '../components/Statistics.vue';
+import ErrorState from '../components/ErrorState.vue';
 import { RouterLink } from 'vue-router';
 
 import '@vue-flow/core/dist/style.css';
@@ -27,6 +28,13 @@ interface Person {
 
 const API = `http://${window.location.hostname}:3000`;
 
+// Цвет связей: средний тон, читается и на светлой, и на тёмной теме
+const EDGE_COLOR = '#777777';
+
+// Размер карточки в схеме дерева
+const NODE_W = 168;
+const NODE_H = 184;
+
 const treeData = ref<Person[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
@@ -39,11 +47,11 @@ const flatPersons = ref<Person[]>([]);
 const selectedFile = ref<File | null>(null);
 
 const editingPerson = ref<Person | null>(null);
+
 const activeTab = ref<'tree' | 'audio' | 'stats'>('tree');
-const flowContainerRef = ref<HTMLElement | null>(null);
 
 // Поиск
-const { setCenter, fitView } = useVueFlow();
+const { setCenter, fitView, viewport } = useVueFlow();
 const searchQuery = ref('');
 const highlightedId = ref<number | null>(null);
 let highlightTimer: ReturnType<typeof setTimeout> | null = null;
@@ -56,7 +64,7 @@ const searchResults = computed(() => {
   );
 });
 
-// Подтверждение удаления
+// Подтверждение
 const confirmDialog = ref<{
   show: boolean;
   title: string;
@@ -102,14 +110,14 @@ const elements = computed(() => {
           id: `e${p.parentId}-${p.id}`,
           source: String(p.parentId),
           target: nodeId,
-          type: 'smoothstep',
+          type: 'default',
           markerEnd: {
             type: MarkerType.ArrowClosed,
             width: 20,
             height: 20,
-            color: '#4a90e2',
+            color: EDGE_COLOR,
           },
-          style: { stroke: '#4a90e2', strokeWidth: 2 },
+          style: { stroke: EDGE_COLOR, strokeWidth: 2 },
         });
       }
 
@@ -118,14 +126,14 @@ const elements = computed(() => {
           id: `e${p.parent2Id}-${p.id}`,
           source: String(p.parent2Id),
           target: nodeId,
-          type: 'smoothstep',
+          type: 'default',
           markerEnd: {
             type: MarkerType.ArrowClosed,
             width: 20,
             height: 20,
-            color: '#4a90e2',
+            color: EDGE_COLOR,
           },
-          style: { stroke: '#4a90e2', strokeWidth: 2 },
+          style: { stroke: EDGE_COLOR, strokeWidth: 2 },
         });
       }
 
@@ -138,11 +146,11 @@ const elements = computed(() => {
   traverse(treeData.value);
 
   const g = new dagre.graphlib.Graph();
-  g.setGraph({ rankdir: 'TB', nodesep: 80, ranksep: 120 });
+  g.setGraph({ rankdir: 'TB', nodesep: 40, ranksep: 72 });
   g.setDefaultEdgeLabel(() => ({}));
 
   nodes.forEach((node) => {
-    g.setNode(node.id, { width: 160, height: 100 });
+    g.setNode(node.id, { width: NODE_W, height: NODE_H });
   });
 
   edges.forEach((edge) => {
@@ -155,64 +163,22 @@ const elements = computed(() => {
     const pos = g.node(node.id);
     return {
       ...node,
-      position: { x: pos.x - 80, y: pos.y - 50 },
+      position: { x: pos.x - NODE_W / 2, y: pos.y - NODE_H / 2 },
     };
   });
 
   return { nodes: layoutedNodes, edges };
 });
 
-async function loadTree() {
-  loading.value = true;
-  error.value = null;
-  try {
-    const res = await axios.get<Person[]>(`${API}/persons/tree`);
-    treeData.value = res.data;
+// ---------- Экспорт в PNG ----------
+const exporting = ref(false);
 
-    const flatRes = await axios.get<Person[]>(`${API}/persons`);
-    flatPersons.value = flatRes.data;
-  } catch (e) {
-    error.value = 'Не удалось загрузить данные';
-    console.error(e);
-  } finally {
-    loading.value = false;
-  }
-}
-
-function focusPerson(personId: number) {
-  const node = elements.value.nodes.find((n: any) => n.id === String(personId));
-  if (node) {
-    setCenter(node.position.x + 80, node.position.y + 50, {
-      zoom: 1.2,
-      duration: 600,
-    });
-
-    highlightedId.value = personId;
-    if (highlightTimer) clearTimeout(highlightTimer);
-    highlightTimer = setTimeout(() => {
-      highlightedId.value = null;
-    }, 3000);
-  }
-}
-
-function onSearchEnter() {
-  const first = searchResults.value[0];
-  if (first) {
-    focusPerson(first.id);
-  }
-}
-
-function clearSearch() {
-  searchQuery.value = '';
-  highlightedId.value = null;
-  if (highlightTimer) clearTimeout(highlightTimer);
-}
-
-// Экспорт в PNG
 async function exportToPng() {
-  if (!flowContainerRef.value) return;
+  if (!flowEl.value || exporting.value) return;
 
   try {
+    exporting.value = true; // прячет анимированную сетку на время снимка
+
     // Сбрасываем подсветку перед скриншотом (чтобы не попала в PNG)
     highlightedId.value = null;
     if (highlightTimer) clearTimeout(highlightTimer);
@@ -222,7 +188,7 @@ async function exportToPng() {
     // Даём Vue Flow время на отрисовку
     await new Promise((r) => setTimeout(r, 400));
 
-    const dataUrl = await toPng(flowContainerRef.value, {
+    const dataUrl = await toPng(flowEl.value, {
       backgroundColor: getComputedStyle(document.body).backgroundColor,
       quality: 1,
       pixelRatio: 2,
@@ -235,7 +201,100 @@ async function exportToPng() {
   } catch (e) {
     alert('Не удалось создать PNG');
     console.error(e);
+  } finally {
+    exporting.value = false;
   }
+}
+
+async function loadTree() {
+  loading.value = true;
+  error.value = null;
+  try {
+    const res = await axios.get<Person[]>(`${API}/persons/tree`);
+    treeData.value = res.data;
+
+    const flatRes = await axios.get<Person[]>(`${API}/persons`);
+    flatPersons.value = flatRes.data;
+  } catch (e) {
+    error.value =
+      axios.isAxiosError(e) && !e.response
+        ? 'Нет связи с сервером'
+        : 'Не удалось загрузить данные';
+    console.error(e);
+  } finally {
+    loading.value = false;
+  }
+}
+
+function focusPerson(personId: number) {
+  const node = elements.value.nodes.find((n: any) => n.id === String(personId));
+  if (node) {
+    setCenter(node.position.x + NODE_W / 2, node.position.y + NODE_H / 2, {
+      zoom: 1.2,
+      duration: 600,
+    });
+
+    highlightedId.value = personId;
+    if (highlightTimer) clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(() => {
+      highlightedId.value = null;
+    }, 3000);
+  }
+}
+
+// ---------- Сетка точек: следует за курсором и двигается вместе с деревом ----------
+const flowEl = ref<HTMLElement | null>(null);
+
+// Слушаем окно (в фазе захвата): во время перетаскивания дерева события мыши
+// до самого поля не доходят, и эффект «застывал» на месте.
+function onWindowMove(e: MouseEvent) {
+  const el = flowEl.value;
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  const x = e.clientX - r.left;
+  const y = e.clientY - r.top;
+  const inside = x >= 0 && y >= 0 && x <= r.width && y <= r.height;
+  el.style.setProperty('--mx', `${x}px`);
+  el.style.setProperty('--my', `${y}px`);
+  el.style.setProperty('--glow', inside ? '1' : '0');
+}
+function hideCursorEffect() {
+  flowEl.value?.style.setProperty('--glow', '0');
+}
+function applyViewport() {
+  const el = flowEl.value;
+  if (!el) return;
+  const v = viewport.value;
+  el.style.setProperty('--vx', `${v.x}px`);
+  el.style.setProperty('--vy', `${v.y}px`);
+  el.style.setProperty('--vz', String(v.zoom));
+}
+watch([viewport, flowEl], applyViewport, { deep: true, immediate: true, flush: 'post' });
+
+onMounted(() => {
+  window.addEventListener('mousemove', onWindowMove, { capture: true, passive: true });
+  window.addEventListener('pointermove', onWindowMove, { capture: true, passive: true });
+  window.addEventListener('blur', hideCursorEffect);
+  document.addEventListener('mouseleave', hideCursorEffect);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('mousemove', onWindowMove, { capture: true });
+  window.removeEventListener('pointermove', onWindowMove, { capture: true });
+  window.removeEventListener('blur', hideCursorEffect);
+  document.removeEventListener('mouseleave', hideCursorEffect);
+});
+
+function onSearchEnter() {
+  const first = searchResults.value[0];
+  if (first) {
+    focusPerson(first.id);
+  }
+}
+
+function clearSearch() {
+  searchQuery.value = '';
+  highlightedId.value = null;
+  if (highlightTimer) clearTimeout(highlightTimer);
 }
 
 function onFileSelect(event: Event) {
@@ -343,51 +402,88 @@ onMounted(() => {
 
 <template>
   <div class="person-list">
-    <div class="top-bar">
-      <RouterLink to="/" class="home-link">← На главную</RouterLink>
+    <header class="top-bar">
+      <RouterLink to="/" class="brand" title="На главную">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="5" r="2.6" />
+          <circle cx="5" cy="19" r="2.6" />
+          <circle cx="19" cy="19" r="2.6" />
+          <path d="M12 7.6V12M12 12H5V16.4M12 12H19V16.4" />
+        </svg>
+        <span>Семейный архив</span>
+      </RouterLink>
       <SettingsMenu />
-    </div>
+    </header>
 
-    <div class="tabs">
+    <div class="tabs" role="tablist">
       <button
         :class="['tab', { active: activeTab === 'tree' }]"
+        role="tab"
+        :aria-selected="activeTab === 'tree'"
         @click="activeTab = 'tree'"
       >
-        🌳 Дерево
+        <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="5" r="2.4" />
+          <circle cx="5.5" cy="19" r="2.4" />
+          <circle cx="18.5" cy="19" r="2.4" />
+          <path d="M12 7.4V12M12 12H5.5v4.6M12 12h6.5v4.6" />
+        </svg>
+        Дерево
       </button>
       <button
         :class="['tab', { active: activeTab === 'audio' }]"
+        role="tab"
+        :aria-selected="activeTab === 'audio'"
         @click="activeTab = 'audio'"
       >
-        🎵 Аудио
+        <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 10v4M9 6v12M13 9v6M17 4v16M21 11v2" />
+        </svg>
+        Аудио
       </button>
       <button
         :class="['tab', { active: activeTab === 'stats' }]"
+        role="tab"
+        :aria-selected="activeTab === 'stats'"
         @click="activeTab = 'stats'"
       >
-        📊 Статистика
+        <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 20v-8M12 20V5M19 20v-5" />
+        </svg>
+        Статистика
       </button>
-      
+
       <button
         v-if="activeTab === 'tree'"
         class="tab export-tab"
+        :disabled="exporting"
         @click="exportToPng"
         title="Скачать дерево как PNG"
       >
-        📸 Скачать PNG
+        <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19h14" />
+        </svg>
+        {{ exporting ? 'Готовлю PNG…' : 'Скачать PNG' }}
       </button>
     </div>
 
     <template v-if="activeTab === 'tree'">
       <div class="search-bar">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="6.5" />
+          <path d="M16 16l4.5 4.5" />
+        </svg>
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="🔍 Поиск по имени..."
+          placeholder="Поиск по имени"
+          aria-label="Поиск по имени"
           @keydown.enter="onSearchEnter"
           @keydown.esc="clearSearch"
         />
-        <button v-if="searchQuery" class="clear-btn" @click="clearSearch">✕</button>
+        <button v-if="searchQuery" class="clear-btn" @click="clearSearch" aria-label="Очистить поиск">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
         <div v-if="searchResults.length > 0" class="search-results">
           <div
             v-for="person in searchResults.slice(0, 5)"
@@ -400,41 +496,44 @@ onMounted(() => {
           </div>
         </div>
         <p v-else-if="searchQuery && searchResults.length === 0" class="no-results">
-          Ничего не найдено
+          Никого с таким именем нет
         </p>
       </div>
 
       <form class="add-form" @submit.prevent="addPerson">
         <div class="form-row">
-          <input v-model="newName" type="text" placeholder="Имя" required />
-          <input v-model="newBirthDate" type="date" />
-          <select v-model="newParentId">
-            <option :value="null">— Родитель 1 —</option>
+          <input v-model="newName" type="text" placeholder="Имя" aria-label="Имя" required />
+          <input v-model="newBirthDate" type="date" aria-label="Дата рождения" />
+          <select v-model="newParentId" aria-label="Родитель 1">
+            <option :value="null">Родитель 1</option>
             <option v-for="p in flatPersons" :key="p.id" :value="p.id">
               {{ p.name }}
             </option>
           </select>
-          <select v-model="newParent2Id">
-            <option :value="null">— Родитель 2 —</option>
+          <select v-model="newParent2Id" aria-label="Родитель 2">
+            <option :value="null">Родитель 2</option>
             <option v-for="p in flatPersons" :key="p.id" :value="p.id">
               {{ p.name }}
             </option>
           </select>
-        </div>
-        <div class="form-row">
           <label class="file-input">
             <input type="file" accept="image/*" @change="onFileSelect" />
             <span class="file-label">
-              {{ selectedFile ? selectedFile.name : '📷 Выбрать фото' }}
+              {{ selectedFile ? selectedFile.name : 'Выбрать фото' }}
             </span>
           </label>
-          <button type="submit">➕ Добавить</button>
+          <button type="submit">Добавить человека</button>
         </div>
       </form>
 
-      <p v-if="loading">Загрузка...</p>
-      <p v-else-if="error" class="error">{{ error }}</p>
-      <div v-else class="flow-container" ref="flowContainerRef">
+      <p v-if="loading" class="status">Загрузка…</p>
+      <ErrorState v-else-if="error" :message="error" @retry="loadTree" />
+      <div
+        v-else
+        class="flow-container"
+        :class="{ exporting }"
+        ref="flowEl"
+      >
         <VueFlow :nodes="elements.nodes" :edges="elements.edges">
           <template #node-custom="nodeProps">
             <PersonCard
@@ -448,7 +547,7 @@ onMounted(() => {
       </div>
     </template>
 
-    <AudioLibrary v-if="activeTab === 'audio'" />
+    <AudioLibrary v-else-if="activeTab === 'audio'" />
     <Statistics v-else-if="activeTab === 'stats'" />
 
     <EditPersonModal
@@ -476,114 +575,125 @@ onMounted(() => {
 .person-list {
   max-width: 100%;
   margin: 0;
-  padding: 16px 24px;
-  font-family: system-ui, sans-serif;
+  padding: 16px 28px 28px;
   background: var(--bg-primary);
   min-height: 100vh;
-  transition: background 0.2s;
+  transition: background-color 0.2s;
 }
 
 .top-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
-
-.home-link {
-  display: inline-block;
-  padding: 6px 14px;
-  font-size: 14px;
-  color: var(--text-secondary);
-  text-decoration: none;
-  border-radius: 8px;
-  transition: all 0.15s;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-ui);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
 }
-.home-link:hover {
+.brand:hover {
   color: var(--accent);
-  background: var(--accent-light);
+}
+.brand-mark {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .tabs {
   display: flex;
-  gap: 4px;
+  gap: 24px;
   margin-bottom: 20px;
-  background: var(--bg-tertiary);
-  padding: 4px;
-  border-radius: 10px;
-  width: 100%;
-  transition: background 0.2s;
+  border-bottom: 1px solid var(--border-color);
 }
 .tab {
-  padding: 8px 20px;
-  font-size: 14px;
+  padding: 8px 2px 10px;
+  margin-bottom: -1px;
+  font-size: 15px;
   font-weight: 500;
   border: none;
+  border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--text-secondary);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
+  transition: color 0.15s, border-color 0.15s;
 }
 .tab:hover {
-  color: var(--accent);
+  color: var(--text-primary);
 }
 .tab.active {
-  background: var(--bg-secondary);
   color: var(--accent);
-  box-shadow: var(--shadow-sm);
-}
-.export-tab {
-  margin-left: auto;
-  color: var(--accent);
-}
-.export-tab:hover {
-  background: var(--accent-light);
+  border-bottom-color: var(--accent);
 }
 
 .search-bar {
   position: relative;
-  margin-bottom: 16px;
-  max-width: 400px;
+  margin-bottom: 14px;
+  max-width: 420px;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 11px;
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  pointer-events: none;
 }
 .search-bar input {
   width: 100%;
-  padding: 10px 36px 10px 14px;
-  font-size: 14px;
+  padding: 10px 38px 10px 38px;
+  font-size: 15px;
   border: 1px solid var(--border-input);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--bg-input);
   color: var(--text-primary);
   outline: none;
-  transition: all 0.15s;
-  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .search-bar input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .clear-btn {
   position: absolute;
   right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
+  top: 8px;
+  width: 26px;
+  height: 26px;
   border: none;
-  background: var(--bg-tertiary);
+  background: transparent;
   color: var(--text-secondary);
-  border-radius: 50%;
-  font-size: 12px;
-  cursor: pointer;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0;
-  transition: all 0.15s;
+  transition: background-color 0.15s, color 0.15s;
+}
+.clear-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
 }
 .clear-btn:hover {
-  background: var(--danger-bg);
-  color: var(--danger);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 .search-results {
   position: absolute;
@@ -593,7 +703,7 @@ onMounted(() => {
   margin-top: 6px;
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   overflow: hidden;
   z-index: 100;
@@ -603,8 +713,9 @@ onMounted(() => {
   cursor: pointer;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  transition: background 0.15s;
+  align-items: baseline;
+  gap: 12px;
+  transition: background-color 0.15s;
 }
 .search-result:hover {
   background: var(--bg-hover);
@@ -614,8 +725,9 @@ onMounted(() => {
   color: var(--text-primary);
 }
 .result-date {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .no-results {
   position: absolute;
@@ -624,24 +736,20 @@ onMounted(() => {
   right: 0;
   margin-top: 6px;
   padding: 12px 14px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-muted);
   background: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 10px;
-  font-style: italic;
+  border-radius: var(--radius-md);
+  z-index: 100;
 }
 
 .add-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 24px;
-  padding: 16px;
+  margin-bottom: 20px;
+  padding: 12px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  transition: background 0.2s, border-color 0.2s;
+  border-radius: var(--radius-md);
 }
 .form-row {
   display: flex;
@@ -649,85 +757,327 @@ onMounted(() => {
   flex-wrap: wrap;
   align-items: center;
 }
-.add-form input,
+.add-form input:not([type="file"]),
 .add-form select {
-  padding: 10px 12px;
+  padding: 9px 12px;
   font-size: 14px;
   border: 1px solid var(--border-input);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-input);
   color: var(--text-primary);
   outline: none;
-  transition: border-color 0.15s, background 0.2s, color 0.2s;
+  transition: border-color 0.15s, box-shadow 0.15s;
 }
 .add-form input:focus,
 .add-form select:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.15);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .add-form input[type="text"] {
   min-width: 160px;
   flex: 1;
 }
 .add-form select {
-  min-width: 150px;
+  min-width: 140px;
 }
 .add-form button {
-  padding: 10px 20px;
+  padding: 9px 18px;
   font-size: 14px;
   font-weight: 500;
-  color: white;
+  color: var(--on-accent);
   background: var(--accent);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.15s;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s, border-color 0.15s;
 }
 .add-form button:hover {
   background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .file-input {
   position: relative;
-  overflow: hidden;
   display: inline-block;
 }
 .file-input input[type="file"] {
   position: absolute;
-  left: -9999px;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
 }
 .file-label {
   display: inline-block;
-  padding: 10px 16px;
+  padding: 9px 14px;
   font-size: 14px;
-  background: var(--bg-input);
-  border: 1px dashed var(--accent);
-  border-radius: 8px;
-  color: var(--accent);
+  background: transparent;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
-  max-width: 220px;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  vertical-align: middle;
 }
 .file-label:hover {
   background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.file-input input:focus-visible + .file-label {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
+/* Поле дерева — чистая стена */
 .flow-container {
   width: 100%;
-  height: calc(100vh - 300px);
-  min-height: 500px;
+  height: calc(100vh - 290px);
+  min-height: 520px;
   border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background:
-    radial-gradient(circle at 1px 1px, var(--graph-bg-dot) 1px, transparent 0) 0 0 / 20px 20px,
-    var(--bg-primary);
-  transition: background 0.2s, border-color 0.2s;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--bg-primary);
+  transition: background-color 0.2s, border-color 0.2s;
 }
 
+.status {
+  color: var(--text-muted);
+}
 .error {
   color: var(--danger);
+}
+
+@media (max-width: 700px) {
+  .person-list { padding: 12px 16px 20px; }
+  .add-form input[type="text"],
+  .add-form select { flex: 1 1 100%; }
+}
+
+/* ---------- Мягкие формы и движение ---------- */
+.top-bar { animation: rise 0.6s var(--ease) both; }
+.tabs { animation: rise 0.6s var(--ease) 0.08s both; }
+.tab { position: relative; }
+.tab.active { border-bottom-color: transparent; }
+.tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s var(--ease);
+}
+.tab.active::after { transform: scaleX(1); }
+
+.search-bar input { border-radius: 999px; }
+.search-results,
+.no-results {
+  border-radius: var(--radius-md);
+  animation: dropIn 0.2s var(--ease);
+}
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+.clear-btn { border-radius: 50%; }
+
+.add-form {
+  border-radius: var(--radius-lg);
+  animation: rise 0.6s var(--ease) 0.15s both;
+}
+.add-form button { border-radius: 999px; padding-left: 22px; padding-right: 22px; }
+.add-form button:hover { transform: translateY(-1px); }
+.file-label { border-radius: 999px; }
+
+/* Поле дерева: точечная сетка и мягкие края */
+.flow-container {
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 1px 1px, var(--graph-bg-dot) 1.3px, transparent 0) 0 0 / 22px 22px,
+    var(--bg-primary);
+  animation: rise 0.7s var(--ease) 0.25s both;
+}
+
+/* ---------- Слои: меню настроек и поиск всегда поверх панелей ---------- */
+.top-bar {
+  position: relative;
+  z-index: 50;
+}
+.search-bar {
+  z-index: 40;
+}
+
+/* ---------- Поле дерева: живая сетка из точек ---------- */
+/* Сетка двигается и масштабируется вместе с деревом (--vx/--vy/--vz из Vue Flow),
+   подсветки-пятна нет: точки у курсора просто крупнее и «дышат». */
+.flow-container {
+  position: relative;
+  --mx: -999px;
+  --my: -999px;
+  --glow: 0;
+  --vx: 0px;
+  --vy: 0px;
+  --vz: 1;
+  --tile: max(11px, calc(22px * var(--vz)));
+  background:
+    radial-gradient(circle at center, var(--graph-bg-dot) 1.2px, transparent 1.7px)
+      var(--vx) var(--vy) / var(--tile) var(--tile),
+    var(--bg-primary);
+  transition: --glow 0.5s var(--ease), background-color 0.2s, border-color 0.2s;
+}
+.flow-container :deep(.vue-flow) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Фоновая волна: по сетке медленно пробегает полоса увеличенных точек */
+.flow-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+      circle at center,
+      color-mix(in srgb, var(--highlight) 75%, transparent) 2px,
+      transparent 2.7px
+    ) var(--vx) var(--vy) / var(--tile) var(--tile);
+  -webkit-mask-image: linear-gradient(115deg, transparent 42%, #000 50%, transparent 58%);
+  mask-image: linear-gradient(115deg, transparent 42%, #000 50%, transparent 58%);
+  -webkit-mask-size: 300% 100%;
+  mask-size: 300% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  opacity: 0.6;
+  animation: dotWave 9s linear infinite;
+}
+@keyframes dotWave {
+  from { -webkit-mask-position: 100% 0; mask-position: 100% 0; }
+  to { -webkit-mask-position: 0% 0; mask-position: 0% 0; }
+}
+
+/* Точки у курсора: крупнее, ярче и «дышат» */
+.flow-container::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+      circle at center,
+      var(--highlight) 2.7px,
+      transparent 3.4px
+    ) var(--vx) var(--vy) / var(--tile) var(--tile);
+  -webkit-mask-image: radial-gradient(circle calc(90px + var(--pulse) * 28px) at var(--mx) var(--my), #000 0%, transparent 100%);
+  mask-image: radial-gradient(circle calc(90px + var(--pulse) * 28px) at var(--mx) var(--my), #000 0%, transparent 100%);
+  opacity: var(--glow);
+  animation: dotBreath 2.2s ease-in-out infinite alternate;
+}
+@keyframes dotBreath {
+  from { --pulse: 0; }
+  to { --pulse: 1; }
+}
+
+/* ---------- Анимации кнопок ---------- */
+.tab {
+  transition: color 0.15s, transform 0.25s var(--ease);
+}
+.tab:hover {
+  transform: translateY(-2px);
+}
+.add-form button {
+  position: relative;
+  overflow: hidden;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.25s var(--ease), box-shadow 0.25s;
+}
+.add-form button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px var(--accent-ring);
+}
+.add-form button:active {
+  transform: scale(0.97);
+}
+.add-form button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--highlight) 50%, transparent) 50%, transparent 70%);
+  transform: translateX(-120%);
+}
+.add-form button:hover::after {
+  transform: translateX(120%);
+  transition: transform 0.75s var(--ease);
+}
+.file-label {
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.25s var(--ease);
+}
+.file-label:hover {
+  transform: translateY(-2px);
+}
+.search-result {
+  transition: background-color 0.15s, padding-left 0.25s var(--ease);
+}
+.search-result:hover {
+  padding-left: 20px;
+}
+.clear-btn {
+  transition: background-color 0.15s, color 0.15s, transform 0.25s var(--ease);
+}
+.clear-btn:hover {
+  transform: rotate(90deg);
+}
+
+/* ---------- Вкладки с иконками, кнопка PNG ---------- */
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.tab-icon {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.35s var(--ease);
+}
+.tab:hover .tab-icon {
+  transform: translateY(-1px) scale(1.12);
+}
+.export-tab {
+  margin-left: auto;
+  color: var(--accent);
+}
+.export-tab::after {
+  display: none;
+}
+.export-tab:hover:not(:disabled) {
+  color: var(--accent-hover);
+}
+.export-tab:hover:not(:disabled) .tab-icon {
+  transform: translateY(2px);
+}
+.export-tab:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* На время экспорта в PNG прячем анимированную сетку */
+.flow-container.exporting {
+  background: var(--bg-primary);
+  animation: none;
+}
+.flow-container.exporting::before,
+.flow-container.exporting::after {
+  display: none;
 }
 </style>
