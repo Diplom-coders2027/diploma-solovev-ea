@@ -32,139 +32,200 @@ function getInitial(name: string): string {
   <div
     class="person-card"
     :class="{ highlighted }"
+    :style="{ '--d': (data.id % 10) * 45 + 'ms' }"
     @dblclick="emit('edit')"
   >
     <div class="card-actions">
-      <button class="action-btn edit" @click.stop="emit('edit')" title="Редактировать">
-        ✎
+      <button
+        class="action-btn edit"
+        @click.stop="emit('edit')"
+        title="Редактировать"
+        :aria-label="`Редактировать: ${data.name}`"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" /></svg>
       </button>
-      <button class="action-btn delete" @click.stop="emit('delete', data.id)" title="Удалить">
-        ✕
+      <button
+        class="action-btn delete"
+        @click.stop="emit('delete', data.id)"
+        title="Удалить"
+        :aria-label="`Удалить: ${data.name}`"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
     </div>
 
-    <div class="avatar">
-      <img v-if="data.photoUrl" :src="getPhotoUrl(data.photoUrl)!" :alt="data.name" />
-      <span v-else class="initial">{{ getInitial(data.name) }}</span>
+    <div class="ring">
+      <div class="photo">
+        <img v-if="data.photoUrl" :src="getPhotoUrl(data.photoUrl)!" :alt="data.name" />
+        <span v-else class="initial">{{ getInitial(data.name) }}</span>
+      </div>
     </div>
 
-    <div class="name">{{ data.name }}</div>
-    <div v-if="data.birthDate" class="date">{{ data.birthDate }}</div>
+    <div class="plate">
+      <div class="name">{{ data.name }}</div>
+      <div v-if="data.birthDate" class="date">{{ data.birthDate }}</div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .person-card {
   position: relative;
-  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 168px;
+  height: 184px;
+  padding: 14px 10px 10px;
   background: var(--bg-secondary);
-  border: 2px solid var(--accent);
-  border-radius: 12px;
-  font-family: system-ui, sans-serif;
-  min-width: 160px;
-  text-align: center;
-  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s ease;
+  animation: popIn 0.5s var(--ease) both;
+  animation-delay: var(--d, 0ms);
+  transition: transform 0.3s var(--ease), border-color 0.25s, box-shadow 0.3s var(--ease);
 }
 .person-card:hover {
-  box-shadow: 0 6px 20px rgba(74, 144, 226, 0.35);
-  transform: translateY(-2px);
-  border-color: var(--accent-hover);
+  transform: translateY(-4px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-md);
 }
 
 .person-card.highlighted {
-  border-color: #f5a623;
-  box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.3), 0 8px 24px rgba(245, 166, 35, 0.5);
-  animation: highlightPulse 1s ease-in-out infinite;
+  border-color: var(--highlight);
+  box-shadow: 0 0 0 3px var(--highlight-ring), var(--shadow-md);
+  animation: highlightPulse 1s ease-in-out 3;
   z-index: 10;
 }
-
 @keyframes highlightPulse {
-  0%, 100% {
-    box-shadow: 0 0 0 4px rgba(245, 166, 35, 0.3), 0 8px 24px rgba(245, 166, 35, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 0 8px rgba(245, 166, 35, 0.15), 0 12px 32px rgba(245, 166, 35, 0.7);
-  }
+  0%, 100% { box-shadow: 0 0 0 3px var(--highlight-ring), var(--shadow-md); }
+  50% { box-shadow: 0 0 0 12px transparent, var(--shadow-md); }
 }
 
 .card-actions {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 8px;
+  right: 8px;
   display: flex;
   gap: 4px;
   opacity: 0;
-  transition: opacity 0.2s;
+  transform: translateY(-4px) scale(0.9);
+  transition: opacity 0.2s, transform 0.25s var(--ease);
+  z-index: 2;
 }
-.person-card:hover .card-actions {
+.person-card:hover .card-actions,
+.person-card:focus-within .card-actions {
   opacity: 1;
+  transform: none;
 }
-
 .action-btn {
-  width: 24px;
-  height: 24px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
   padding: 0;
-  line-height: 1;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s, color 0.15s;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s, transform 0.2s var(--ease);
 }
-.action-btn.edit {
-  background: var(--accent-light);
-  color: var(--accent);
+.action-btn:hover {
+  transform: scale(1.12);
+}
+.action-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .action-btn.edit:hover {
   background: var(--accent);
-  color: white;
-}
-.action-btn.delete {
-  background: var(--danger-bg);
-  color: var(--danger);
+  border-color: var(--accent);
+  color: var(--on-accent);
 }
 .action-btn.delete:hover {
-  background: var(--danger);
-  color: white;
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
+  color: #fff;
 }
 
-.avatar {
-  width: 64px;
-  height: 64px;
+/* Круглый портрет с градиентным кольцом; на наведении кольцо вращается */
+.ring {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  flex-shrink: 0;
   border-radius: 50%;
-  margin: 0 auto 8px;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid var(--bg-secondary);
-  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3);
 }
-.avatar img {
+.ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--highlight), var(--highlight-soft), var(--highlight));
+  opacity: 0.85;
+}
+.person-card:hover .ring::before {
+  animation: spin 3s linear infinite;
+}
+.photo {
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid var(--bg-secondary);
+  background: var(--bg-tertiary);
+  display: flex;
+}
+.photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  display: block;
 }
 .initial {
-  color: white;
-  font-size: 26px;
-  font-weight: 600;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, var(--bg-elevated), var(--bg-tertiary));
+  color: var(--highlight-soft);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 30px;
+  font-weight: 500;
+}
+
+/* Подпись */
+.plate {
+  margin-top: 9px;
+  width: 100%;
+  text-align: center;
+  min-width: 0;
 }
 .name {
-  font-weight: 600;
+  font-family: var(--font-ui);
+  font-weight: 500;
   font-size: 14px;
+  line-height: 1.22;
   color: var(--text-primary);
-  margin-bottom: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .date {
+  margin-top: 3px;
   font-size: 12px;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 </style>
