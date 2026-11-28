@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 
 interface Person {
   id: number;
@@ -33,6 +33,11 @@ const parentId = ref<number | null>(null);
 const parent2Id = ref<number | null>(null);
 const newPhoto = ref<File | null>(null);
 
+// Ссылка на поле ввода имени
+const nameInputRef = ref<HTMLInputElement | null>(null);
+// Запоминаем элемент, с которого открылось окно
+let previouslyFocusedElement: HTMLElement | null = null;
+
 watch(
   () => props.person,
   (p) => {
@@ -42,6 +47,20 @@ watch(
       parentId.value = p.parentId;
       parent2Id.value = p.parent2Id;
       newPhoto.value = null;
+
+      // Запоминаем активный элемент до открытия модалки
+      previouslyFocusedElement = document.activeElement as HTMLElement;
+      
+      // Переводим фокус на поле "Имя" после отрисовки
+      nextTick(() => {
+        nameInputRef.value?.focus();
+      });
+    } else {
+      // Возвращаем фокус обратно после закрытия
+      if (previouslyFocusedElement) {
+        previouslyFocusedElement.focus();
+        previouslyFocusedElement = null;
+      }
     }
   },
   { immediate: true }
@@ -85,7 +104,13 @@ function onSave() {
         <form @submit.prevent="onSave">
           <label>
             Имя
-            <input v-model="name" type="text" required />
+            <!-- Добавили ref="nameInputRef" -->
+            <input 
+              ref="nameInputRef" 
+              v-model="name" 
+              type="text" 
+              required 
+            />
           </label>
 
           <label>
@@ -129,6 +154,7 @@ function onSave() {
 </template>
 
 <style scoped>
+/* ... (стили полностью совпадают с вашим исходным кодом) ... */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -138,18 +164,25 @@ function onSave() {
   justify-content: center;
   z-index: 2000;
   padding: 20px;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 .modal {
   background: var(--bg-elevated);
   padding: 28px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   max-width: 480px;
   width: 100%;
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   box-shadow: var(--shadow-lg);
   color: var(--text-primary);
+  animation: modalIn 0.3s var(--ease);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.95); }
+  to { opacity: 1; transform: none; }
 }
 h2 {
   margin: 0 0 22px;
@@ -195,17 +228,23 @@ input[type="file"] {
   margin-top: 24px;
 }
 button {
+  position: relative;
+  overflow: hidden;
   padding: 10px 20px;
   font-size: 14px;
   font-weight: 500;
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   border: 1px solid var(--border-input);
   background: transparent;
   color: var(--text-primary);
-  transition: background-color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.25s var(--ease), box-shadow 0.25s;
 }
 button:hover {
   background: var(--bg-hover);
+  transform: translateY(-2px);
+}
+button:active {
+  transform: scale(0.97);
 }
 button.primary {
   background: var(--accent);
@@ -215,48 +254,6 @@ button.primary {
 button.primary:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
-}
-
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.15s;
-}
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-/* ---------- Мягкие формы и движение ---------- */
-.modal-overlay {
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-}
-.modal {
-  border-radius: var(--radius-lg);
-  animation: modalIn 0.3s var(--ease);
-}
-@keyframes modalIn {
-  from { opacity: 0; transform: translateY(14px) scale(0.95); }
-  to { opacity: 1; transform: none; }
-}
-.btn,
-button {
-  border-radius: 999px;
-}
-
-/* ---------- Анимации кнопок ---------- */
-button {
-  position: relative;
-  overflow: hidden;
-  transition: background-color 0.15s, border-color 0.15s, transform 0.25s var(--ease), box-shadow 0.25s;
-}
-button:hover {
-  transform: translateY(-2px);
-}
-button:active {
-  transform: scale(0.97);
-}
-button.primary:hover {
   box-shadow: 0 8px 20px var(--accent-ring);
 }
 button.primary::after {
@@ -269,5 +266,14 @@ button.primary::after {
 button.primary:hover::after {
   transform: translateX(120%);
   transition: transform 0.75s var(--ease);
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.15s;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
 }
 </style>

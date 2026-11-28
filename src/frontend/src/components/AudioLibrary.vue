@@ -452,7 +452,7 @@ onUnmounted(() => {
   border-radius: var(--radius-lg);
   border-top-width: 1px;
   animation: rise 0.6s var(--ease) both;
-  animation-delay: calc(var(--n, 0) * 60ms);
+  animation-delay: min(calc(var(--n, 0) * 60ms), 300ms);
   transition: transform 0.3s var(--ease), box-shadow 0.3s var(--ease);
 }
 .person-audio-card:hover {
@@ -499,5 +499,10 @@ onUnmounted(() => {
 }
 .del-audio:hover {
   transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .person-audio-card {
+     animation-delay: 0ms;
+  }
 }
 </style>

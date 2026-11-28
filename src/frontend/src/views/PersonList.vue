@@ -184,7 +184,7 @@ async function exportToPng() {
     if (highlightTimer) clearTimeout(highlightTimer);
 
     // Вписываем всё дерево в экран, чтобы ничего не обрезалось
-    await fitView({ padding: 0.1, duration: 300 });
+    await fitView({ padding: 0.1, duration: 300, minZoom: 0.05 });
     // Даём Vue Flow время на отрисовку
     await new Promise((r) => setTimeout(r, 400));
 
@@ -612,6 +612,7 @@ onMounted(() => {
 
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   margin-bottom: 20px;
   border-bottom: 1px solid var(--border-color);

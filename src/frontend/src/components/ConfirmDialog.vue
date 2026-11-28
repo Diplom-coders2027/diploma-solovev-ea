@@ -1,5 +1,7 @@
 <script setup lang="ts">
-defineProps<{
+import { ref, watch, nextTick } from 'vue';
+
+const props = defineProps<{
   show: boolean;
   title: string;
   message: string;
@@ -12,6 +14,32 @@ const emit = defineEmits<{
   (e: 'confirm'): void;
   (e: 'cancel'): void;
 }>();
+
+// Ссылка на кнопку "Отмена"
+const cancelBtnRef = ref<HTMLButtonElement | null>(null);
+// Запоминаем, какой элемент был в фокусе до открытия
+let previouslyFocusedElement: HTMLElement | null = null;
+
+watch(
+  () => props.show,
+  (isOpen) => {
+    if (isOpen) {
+      // Запоминаем активный элемент перед открытием
+      previouslyFocusedElement = document.activeElement as HTMLElement;
+      
+      // Переводим фокус на кнопку "Отмена" после отрисовки
+      nextTick(() => {
+        cancelBtnRef.value?.focus();
+      });
+    } else {
+      // Возвращаем фокус обратно после закрытия
+      if (previouslyFocusedElement) {
+        previouslyFocusedElement.focus();
+        previouslyFocusedElement = null;
+      }
+    }
+  }
+);
 </script>
 
 <template>
@@ -22,7 +50,12 @@ const emit = defineEmits<{
         <p>{{ message }}</p>
 
         <div class="buttons">
-          <button class="btn cancel" @click="emit('cancel')">
+          <!-- Добавили ref="cancelBtnRef" -->
+          <button 
+            ref="cancelBtnRef"
+            class="btn cancel" 
+            @click="emit('cancel')"
+          >
             {{ cancelText || 'Отмена' }}
           </button>
           <button
@@ -38,7 +71,9 @@ const emit = defineEmits<{
   </Transition>
 </template>
 
+<!-- Стили оставляем без изменений -->
 <style scoped>
+/* ... весь ваш блок стилей остаётся как был ... */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -48,17 +83,25 @@ const emit = defineEmits<{
   justify-content: center;
   z-index: 2000;
   padding: 20px;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 .modal {
   background: var(--bg-elevated);
   padding: 28px 28px 22px;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   max-width: 440px;
   width: 100%;
   box-shadow: var(--shadow-lg);
   color: var(--text-primary);
+  animation: modalIn 0.3s var(--ease);
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.95); }
+  to { opacity: 1; transform: none; }
 }
 
 h3 {
@@ -82,18 +125,24 @@ p {
 }
 
 .btn {
+  position: relative;
+  overflow: hidden;
   padding: 10px 20px;
   font-size: 14px;
   font-weight: 500;
-  border-radius: var(--radius-md);
+  border-radius: 999px;
   border: 1px solid var(--border-input);
   background: transparent;
   color: var(--text-primary);
-  transition: background-color 0.15s, border-color 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.25s var(--ease), box-shadow 0.25s;
   min-width: 96px;
 }
 .btn:hover {
   background: var(--bg-hover);
+  transform: translateY(-2px);
+}
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn.confirm {
@@ -104,6 +153,7 @@ p {
 .btn.confirm:hover {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
+  box-shadow: 0 8px 20px var(--accent-ring);
 }
 
 .btn.confirm.danger {
@@ -116,48 +166,6 @@ p {
   border-color: var(--danger-solid-hover);
 }
 
-.modal-fade-enter-active,
-.modal-fade-leave-active {
-  transition: opacity 0.15s;
-}
-.modal-fade-enter-from,
-.modal-fade-leave-to {
-  opacity: 0;
-}
-
-/* ---------- Мягкие формы и движение ---------- */
-.modal-overlay {
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-}
-.modal {
-  border-radius: var(--radius-lg);
-  animation: modalIn 0.3s var(--ease);
-}
-@keyframes modalIn {
-  from { opacity: 0; transform: translateY(14px) scale(0.95); }
-  to { opacity: 1; transform: none; }
-}
-.btn,
-button {
-  border-radius: 999px;
-}
-
-/* ---------- Анимации кнопок ---------- */
-.btn {
-  position: relative;
-  overflow: hidden;
-  transition: background-color 0.15s, border-color 0.15s, transform 0.25s var(--ease), box-shadow 0.25s;
-}
-.btn:hover {
-  transform: translateY(-2px);
-}
-.btn:active {
-  transform: scale(0.97);
-}
-.btn.confirm:hover {
-  box-shadow: 0 8px 20px var(--accent-ring);
-}
 .btn.confirm::after {
   content: '';
   position: absolute;
@@ -168,5 +176,14 @@ button {
 .btn.confirm:hover::after {
   transform: translateX(120%);
   transition: transform 0.75s var(--ease);
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.15s;
+}
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
 }
 </style>

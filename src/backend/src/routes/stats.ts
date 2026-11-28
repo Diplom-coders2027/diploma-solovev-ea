@@ -30,10 +30,11 @@ router.get('/', async (req: Request, res: Response) => {
       }
       ages.push(age);
 
-      if (!oldest || age > oldest.age) {
+      // ИСПРАВЛЕНИЕ 3.1: Сравниваем даты, а не возраст, чтобы избежать ошибки при одинаковом возрасте
+      if (!oldest || new Date(p.birthDate) < new Date(oldest.birthDate)) {
         oldest = { name: p.name, age, birthDate: p.birthDate };
       }
-      if (!youngest || age < youngest.age) {
+      if (!youngest || new Date(p.birthDate) > new Date(youngest.birthDate)) {
         youngest = { name: p.name, age, birthDate: p.birthDate };
       }
     }
@@ -46,19 +47,28 @@ router.get('/', async (req: Request, res: Response) => {
     const generationMap = new Map<number, number>();
     const idToPerson = new Map(persons.map((p) => [p.id, p]));
 
-    function getGeneration(id: number): number {
+    // ИСПРАВЛЕНИЕ 3.2: Добавлен параметр visiting для защиты от бесконечных циклов
+    function getGeneration(id: number, visiting = new Set<number>()): number {
       if (generationMap.has(id)) return generationMap.get(id)!;
+      if (visiting.has(id)) return 0; // Если нашли цикл, прерываем рекурсию
+
+      visiting.add(id);
       const p = idToPerson.get(id);
-      if (!p) return 0;
+      if (!p) {
+        visiting.delete(id);
+        return 0;
+      }
 
       let gen = 0;
       if (p.parentId && idToPerson.has(p.parentId)) {
-        gen = Math.max(gen, getGeneration(p.parentId) + 1);
+        gen = Math.max(gen, getGeneration(p.parentId, visiting) + 1);
       }
       if (p.parent2Id && idToPerson.has(p.parent2Id)) {
-        gen = Math.max(gen, getGeneration(p.parent2Id) + 1);
+        gen = Math.max(gen, getGeneration(p.parent2Id, visiting) + 1);
       }
+      
       generationMap.set(id, gen);
+      visiting.delete(id);
       return gen;
     }
 
@@ -66,6 +76,9 @@ router.get('/', async (req: Request, res: Response) => {
     for (const p of persons) {
       maxGeneration = Math.max(maxGeneration, getGeneration(p.id));
     }
+
+    // ИСПРАВЛЕНИЕ 3.3: Если людей нет, поколений 0, а не 1
+    const generationsCount = total > 0 ? maxGeneration + 1 : 0;
 
     // Дни рождения
     const currentMonth = today.getMonth();
@@ -95,7 +108,7 @@ router.get('/', async (req: Request, res: Response) => {
 
     res.json({
       total,
-      generations: maxGeneration + 1,
+      generations: generationsCount, // Используем исправленное значение
       avgAge,
       oldest,
       youngest,
